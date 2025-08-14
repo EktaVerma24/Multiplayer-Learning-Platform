@@ -7,13 +7,19 @@ import http from 'http';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import { setupSocket } from './socket.js';
-import authRoutes from './routes/auth.js';
+import authRoutes from './routes/authRoutes.js';
+import classroomRoutes from './routes/classroomRoutes.js';  
 
 const app = express();
 
 // Middleware
 app.use(express.json());
+
+// Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/classrooms', classroomRoutes);
+
+// CORS
 app.use(
   cors({
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
