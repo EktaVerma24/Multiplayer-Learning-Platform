@@ -1,27 +1,32 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Classroom from "./pages/Classroom.jsx";
-import Whiteboard from "./pages/Whiteboard.jsx";
-import Quiz from "./pages/Quiz.jsx";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useState } from "react";
+import Login from "./pages/Login.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
+import ClassroomPage from "./pages/ClassroomPage.jsx";
 
 function App() {
-  const user = { name: "John Doe" }; // Replace with logged-in user
-  const classroomId = "689f184b7c7bb3f37223c4ee"; // Replace dynamically from classroom selection
+  const [user, setUser] = useState(null);
 
   return (
     <Router>
       <Routes>
+        {/* Login page */}
+        <Route path="/" element={<Login setUser={setUser} />} />
+
+        {/* Dashboard page */}
         <Route
-          path="/classroom"
-          element={<Classroom classroomId={classroomId} user={user} />}
+          path="/dashboard"
+          element={user ? <Dashboard user={user} /> : <Navigate to="/" replace />}
         />
+
+        {/* Classroom page */}
         <Route
-          path="/whiteboard"
-          element={<Whiteboard classroomId={classroomId} user={user} />}
+          path="/classroom/:id"
+          element={user ? <ClassroomPage user={user} /> : <Navigate to="/" replace />}
         />
-        <Route
-          path="/quiz"
-          element={<Quiz classroomId={classroomId} />}
-        />
+
+        {/* Fallback for unmatched routes */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
