@@ -8,7 +8,10 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import { setupSocket } from './socket.js';
 import authRoutes from './routes/authRoutes.js';
-import classroomRoutes from './routes/classroomRoutes.js';  
+import classroomRoutes from './routes/classroomRoutes.js';
+import challengeRoutes from './routes/challengeRoutes.js';
+import quizRoutes from './routes/quizRoutes.js';
+
 
 const app = express();
 
@@ -18,6 +21,8 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/classrooms', classroomRoutes);
+app.use('/api/challenges', challengeRoutes);
+app.use('/api/quizzes', quizRoutes);  
 
 // CORS
 app.use(
