@@ -1,10 +1,33 @@
 import Challenge from "../models/Challenge.js";
-
+import cloudinary from "../config/cloudinary.js";
 const createChallenge = async (req, res) => {
   try {
-    const challenge = await Challenge.create(req.body);
+    let imageUrl = null;
+
+    if (req.file) {
+      imageUrl = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "challenges" },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result.secure_url);
+          }
+        );
+        stream.end(req.file.buffer);
+      });
+    }
+
+    const challenge = await Challenge.create({
+      title: req.body.title,
+      description: req.body.description,
+      classroom: req.body.classroom,
+      teacher: req.body.teacher,
+      image: imageUrl,
+    });
+
     res.status(201).json(challenge);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 };

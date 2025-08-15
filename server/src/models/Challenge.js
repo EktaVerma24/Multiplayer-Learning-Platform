@@ -12,6 +12,7 @@ const challengeSchema = new mongoose.Schema({
   description: { type: String, required: true },
   classroom: { type: mongoose.Schema.Types.ObjectId, ref: "Classroom", required: true },
   teacher: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  image: { type: String, default: null },
   submissions: [submissionSchema],
 }, { timestamps: true });
 
