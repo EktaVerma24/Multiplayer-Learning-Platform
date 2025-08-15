@@ -6,8 +6,26 @@ export default function Quiz({ classroomId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Debug: Check what classroomId is being passed
   useEffect(() => {
-    if (!classroomId) return;
+    console.log("Classroom ID passed to Quiz:", classroomId);
+  }, [classroomId]);
+
+  useEffect(() => {
+    if (!classroomId) {
+      setError("No classroom selected.");
+      setLoading(false);
+      return;
+    }
+
+    // Optional: Validate ObjectId format before making request
+    // If classroomId is not valid, stop here
+    // This prevents hitting the backend with "class1" and causing a 500 error
+    if (!/^[0-9a-fA-F]{24}$/.test(classroomId)) {
+      setError("Invalid classroom ID format.");
+      setLoading(false);
+      return;
+    }
 
     const fetchQuizzes = async () => {
       setLoading(true);
@@ -16,8 +34,8 @@ export default function Quiz({ classroomId }) {
         const res = await API.get(`/quizzes/classroom/${classroomId}`);
         setQuizzes(res.data);
       } catch (err) {
-        console.error(err);
-        setError("Failed to fetch quizzes. Please try again.");
+        console.error("Error fetching quizzes:", err);
+        setError(err.response?.data?.message || "Failed to fetch quizzes. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -28,8 +46,7 @@ export default function Quiz({ classroomId }) {
 
   if (loading) return <p className="p-4">Loading quizzes...</p>;
   if (error) return <p className="p-4 text-red-500">{error}</p>;
-  if (quizzes.length === 0)
-    return <p className="p-4">No quizzes found for this classroom.</p>;
+  if (quizzes.length === 0) return <p className="p-4">No quizzes found for this classroom.</p>;
 
   return (
     <div className="p-4">
