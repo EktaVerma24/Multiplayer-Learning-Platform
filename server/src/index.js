@@ -18,19 +18,21 @@ const app = express();
 // Middleware
 app.use(express.json());
 
+// CORS
+app.use(
+  cors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+  })
+);
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/classrooms', classroomRoutes);
 app.use('/api/challenges', challengeRoutes);
 app.use('/api/quizzes', quizRoutes);  
 
-// CORS
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true,
-  })
-);
+
 
 const server = http.createServer(app);
 setupSocket(server); // socket.io logic
