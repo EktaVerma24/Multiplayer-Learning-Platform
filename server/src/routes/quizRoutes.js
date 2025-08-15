@@ -1,26 +1,11 @@
 import express from "express";
-import Quiz from "../models/Quiz.js";
-
+import { createQuiz , getQuizByClassroom } from "../controllers/quizController.js";
 const router = express.Router();
 
 // Create Quiz
-router.post("/", async (req, res) => {
-  try {
-    const quiz = await Quiz.create(req.body);
-    res.status(201).json(quiz);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+router.post("/", createQuiz);
 
 // Get Quizzes by Classroom
-router.get("/classroom/:classroomId", async (req, res) => {
-  try {
-    const quizzes = await Quiz.find({ classroom: req.params.classroomId });
-    res.json(quizzes);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+router.get("/classroom/:classroomId", getQuizByClassroom);
 
 export default router;
