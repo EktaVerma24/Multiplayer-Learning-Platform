@@ -1,5 +1,9 @@
 import { Server } from "socket.io";
 
+// This will store the latest canvas state for each room,
+// so new users get the up-to-date whiteboard.
+const canvasStates = {};
+
 export const setupSocket = (server) => {
   const io = new Server(server, {
     cors: {
@@ -17,6 +21,11 @@ export const setupSocket = (server) => {
       socket.join(classroomId);
       console.log(`${user.name} joined classroom ${classroomId}`);
 
+      // NEW: Send the latest canvas state to the user who just joined
+      if (canvasStates[classroomId]) {
+        socket.emit("canvas-state-from-server", canvasStates[classroomId]);
+      }
+
       // Notify others in the room
       socket.to(classroomId).emit("userJoined", {
         userId: socket.id,
@@ -24,9 +33,7 @@ export const setupSocket = (server) => {
       });
     });
 
-    // ------------------- CHAT MESSAGES -------------------
     socket.on("sendMessage", ({ classroomId, message, user }) => {
-      // Emit message to everyone in the classroom
       io.to(classroomId).emit("receiveMessage", {
         user,
         message,
@@ -34,13 +41,14 @@ export const setupSocket = (server) => {
       });
     });
 
-    // ------------------- WHITEBOARD EVENTS -------------------
-    socket.on("drawing", ({ classroomId, data }) => {
-      // Broadcast drawing data to others
-      socket.to(classroomId).emit("drawingData", data);
+    // This section is updated to work with the Fabric.js component.
+    socket.on("canvas-state", ({ classroomId, state }) => {
+      // Store the latest state for this room.
+      canvasStates[classroomId] = state;
+      // Broadcast the new state to everyone else in the room.
+      socket.to(classroomId).emit("canvas-state-from-server", state);
     });
 
-    // ------------------- WEBRTC SIGNALING -------------------
     socket.on("webrtcOffer", ({ classroomId, offer, sender }) => {
       socket.to(classroomId).emit("webrtcOffer", { offer, sender });
     });
@@ -53,10 +61,8 @@ export const setupSocket = (server) => {
       socket.to(classroomId).emit("webrtcIceCandidate", { candidate, sender });
     });
 
-    // ------------------- DISCONNECT -------------------
     socket.on("disconnect", () => {
       console.log("❌ Client disconnected:", socket.id);
-      // Optionally notify all rooms the user was in
     });
   });
 };

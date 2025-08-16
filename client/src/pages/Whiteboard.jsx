@@ -46,8 +46,10 @@ export default function Whiteboard({ classroomId, user }) {
   useEffect(() => { brushSizeRef.current = brushSize; }, [brushSize]);
 
   const emitState = useCallback(debounce((state) => {
-    socket.emit("canvas-state", { classroomId, state });
-  }, 500), [socket, classroomId]);
+    if (socket) {
+        socket.emit("canvas-state", { classroomId, state });
+    }
+  }, 300), [socket, classroomId]);
 
   const saveState = useCallback(() => {
     if (isRemoteUpdate.current || !fabricRef.current) return;
@@ -64,6 +66,8 @@ export default function Whiteboard({ classroomId, user }) {
   }, [saveState]);
 
   useEffect(() => {
+    if (!socket) return;
+
     const canvas = new fabric.Canvas(canvasRef.current, {
       width: window.innerWidth * 0.9,
       height: window.innerHeight * 0.7,
@@ -76,7 +80,9 @@ export default function Whiteboard({ classroomId, user }) {
       isRemoteUpdate.current = true;
       canvas.loadFromJSON(state, () => {
         canvas.renderAll();
-        setHistory([state]);
+        // Set history without triggering a new save
+        const newHistory = [state];
+        setHistory(newHistory);
         setHistoryIndex(0);
         isRemoteUpdate.current = false;
       });
@@ -89,7 +95,7 @@ export default function Whiteboard({ classroomId, user }) {
       
       if (currentTool === 'eraser' && o.target) {
         canvas.remove(o.target);
-        saveStateRef.current(); // Save state immediately after erase
+        saveStateRef.current();
         return;
       }
       
@@ -136,35 +142,37 @@ export default function Whiteboard({ classroomId, user }) {
     
     return () => {
       socket.off("canvas-state-from-server");
-      canvas.dispose();
+      if (canvas) {
+        canvas.dispose();
+      }
     };
   }, [classroomId, socket, user]);
 
-  // --- Effect to Update Canvas Properties and Cursors ---
   useEffect(() => {
     const canvas = fabricRef.current;
     if (!canvas) return;
     
-    // THE FIX: Simplified canvas-level property settings.
-    // We no longer loop through objects here, preventing the bug.
     canvas.isDrawingMode = tool === 'pencil';
     canvas.selection = tool === 'select';
     
-    // We still set properties for the pencil brush when needed.
+    canvas.forEachObject(obj => {
+      obj.selectable = tool === 'select';
+      obj.evented = true; 
+    });
+    
     if (tool === 'pencil') {
       canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
       canvas.freeDrawingBrush.color = color;
       canvas.freeDrawingBrush.width = brushSize;
     }
 
-    // Set cursors based on the selected tool
     if (tool === 'select') {
       canvas.defaultCursor = 'default';
       canvas.hoverCursor = 'move';
     } else if (tool === 'eraser') {
       canvas.defaultCursor = eraserCursor;
       canvas.hoverCursor = eraserCursor;
-    } else { // All other drawing tools
+    } else {
       canvas.defaultCursor = 'crosshair';
       canvas.hoverCursor = 'crosshair';
     }
