@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-
+import API from "../api/axios.js";
 export default function Challenge({ classroomId }) {
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,8 +12,8 @@ export default function Challenge({ classroomId }) {
       try {
         setLoading(true);
         setError("");
-        const res = await axios.get(
-          `http://localhost:5000/api/challenges/classroom/${classroomId}`
+        const res = await API.get(
+          `/challenges/classroom/${classroomId}`
         );
         setChallenges(res.data);
       } catch (err) {

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
+import API from "../api/axios.js";
 
 export default function CreateChallenge() {
   const { classroomId } = useParams();
@@ -11,7 +11,7 @@ export default function CreateChallenge() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await axios.post(`http://localhost:5000/api/challenges`, {
+    await API.post(`/challenges`, {
       classroomId,
       title,
       description,

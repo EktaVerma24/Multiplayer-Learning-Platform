@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import API from "../api/axios";
 import { useParams, useNavigate } from "react-router-dom";
 
 export default function CreateQuiz() {
@@ -14,7 +14,7 @@ export default function CreateQuiz() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await axios.post(`http://localhost:5000/api/quizzes`, {
+    await API.post(`/quizzes`, {
       classroomId,
       title,
       questions
