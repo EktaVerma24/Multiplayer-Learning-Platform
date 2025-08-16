@@ -63,7 +63,7 @@ export default function ClassroomPage({ user }) {
       </div>
 
       {/* Tab Content */}
-      <div className="border p-4 rounded min-h-[400px]">
+      <div className="p-4 rounded min-h-[400px]">
         {tab === "chat" && (
           <div>
             <div className="border p-4 h-64 overflow-y-scroll mb-4">
