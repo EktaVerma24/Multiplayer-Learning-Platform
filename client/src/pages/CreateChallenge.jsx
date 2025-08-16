@@ -1,6 +1,6 @@
-import { useState } from "react";
-import axios from "axios";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import API from "../api/axios";
 
 export default function CreateChallenge({ user }) {
   const { id: classroomId } = useParams();
@@ -25,13 +25,58 @@ export default function CreateChallenge({ user }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await axios.post(`http://localhost:5000/api/challenges`, {
-      classroomId,
-      title,
-      description,
-      difficulty
+
+    // Basic required field checks
+    if (!user?._id) {
+      alert("You must be logged in as a teacher to create a challenge.");
+      return;
+    }
+    if (!classroomId) {
+      alert("No classroom selected.");
+      return;
+    }
+    if (!title.trim()) {
+      alert("Challenge title is required.");
+      return;
+    }
+    if (!description.trim()) {
+      alert("Challenge description is required.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("title", title.trim());
+    formData.append("description", description.trim());
+    formData.append("difficulty", difficulty);
+    formData.append("classroom", classroomId);
+    formData.append("teacher", user._id);
+    if (image) {
+      formData.append("image", image);
+    }
+
+    console.log("Submitting challenge payload:", {
+      title: title.trim(),
+      description: description.trim(),
+      difficulty,
+      classroom: classroomId,
+      teacher: user._id,
+      image: image ? image.name : null,
     });
-    navigate(`/classroom/${classroomId}`);
+
+    try {
+      await API.post("/challenges", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      alert("Challenge created successfully!");
+      navigate(`/classroom/${classroomId}`);
+    } catch (err) {
+      console.error("Error creating challenge:", err);
+      if (err.response?.data?.message) {
+        alert(`Error: ${err.response.data.message}`);
+      } else {
+        alert("Failed to create challenge. Check console for details.");
+      }
+    }
   };
 
   return (
