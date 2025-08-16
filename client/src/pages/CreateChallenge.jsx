@@ -3,30 +3,32 @@ import { useParams, useNavigate } from "react-router-dom";
 import API from "../api/axios";
 
 export default function CreateChallenge({ user }) {
-  const { id: classroomId } = useParams();
+  const { id: classroomId } = useParams(); // ✅ same as CreateQuiz
   const navigate = useNavigate();
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [difficulty, setDifficulty] = useState("Easy");
-  const [image, setImage] = useState(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    difficulty: "Easy",
+    dueDate: "",
+  });
 
-  // Redirect if classroomId is missing
+  // If classroomId is missing, redirect back to dashboard
   useEffect(() => {
     if (!classroomId) {
-      console.error("Missing classroomId in route");
+      console.error("❌ Missing classroomId in route");
       navigate("/dashboard");
     }
   }, [classroomId, navigate]);
 
-  const handleFileChange = (e) => {
-    setImage(e.target.files[0]);
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Basic required field checks
+    // Basic validation
     if (!user?._id) {
       alert("You must be logged in as a teacher to create a challenge.");
       return;
@@ -35,42 +37,28 @@ export default function CreateChallenge({ user }) {
       alert("No classroom selected.");
       return;
     }
-    if (!title.trim()) {
-      alert("Challenge title is required.");
-      return;
-    }
-    if (!description.trim()) {
-      alert("Challenge description is required.");
+    if (!formData.title.trim() || !formData.description.trim()) {
+      alert("Title and description are required.");
       return;
     }
 
-    const formData = new FormData();
-    formData.append("title", title.trim());
-    formData.append("description", description.trim());
-    formData.append("difficulty", difficulty);
-    formData.append("classroom", classroomId);
-    formData.append("teacher", user._id);
-    if (image) {
-      formData.append("image", image);
-    }
-
-    console.log("Submitting challenge payload:", {
-      title: title.trim(),
-      description: description.trim(),
-      difficulty,
-      classroom: classroomId,
+    const payload = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      difficulty: formData.difficulty,
+      dueDate: formData.dueDate,
+      classroom: classroomId, // ✅ match backend field name
       teacher: user._id,
-      image: image ? image.name : null,
-    });
+    };
+
+    console.log("📤 Submitting challenge payload:", payload);
 
     try {
-      await API.post("/challenges", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      alert("Challenge created successfully!");
+      await API.post("/challenges", payload);
+      alert("✅ Challenge created successfully!");
       navigate(`/classroom/${classroomId}`);
     } catch (err) {
-      console.error("Error creating challenge:", err);
+      console.error("❌ Error creating challenge:", err);
       if (err.response?.data?.message) {
         alert(`Error: ${err.response.data.message}`);
       } else {
@@ -80,42 +68,53 @@ export default function CreateChallenge({ user }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 space-y-4">
+    <form onSubmit={handleSubmit} className="p-4 space-y-4 max-w-lg mx-auto">
       <h1 className="text-xl font-bold">Create Challenge</h1>
 
       <input
         type="text"
+        name="title"
         placeholder="Challenge title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
+        value={formData.title}
+        onChange={handleChange}
         className="border p-2 w-full"
+        required
       />
 
       <textarea
+        name="description"
         placeholder="Challenge description"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
+        value={formData.description}
+        onChange={handleChange}
         className="border p-2 w-full"
+        required
       />
 
-      <label>
-        Difficulty:
+      <div>
+        <label className="block mb-1 font-semibold">Difficulty</label>
         <select
-          value={difficulty}
-          onChange={(e) => setDifficulty(e.target.value)}
-          className="border p-1 ml-2"
+          name="difficulty"
+          value={formData.difficulty}
+          onChange={handleChange}
+          className="border p-2 w-full"
         >
-          <option value="Easy">Easy</option>
-          <option value="Medium">Medium</option>
-          <option value="Hard">Hard</option>
+          <option>Easy</option>
+          <option>Medium</option>
+          <option>Hard</option>
         </select>
-      </label>
+      </div>
 
-      <input
-        type="file"
-        onChange={handleFileChange}
-        className="border p-2 w-full"
-      />
+      <div>
+        <label className="block mb-1 font-semibold">Due Date</label>
+        <input
+          type="date"
+          name="dueDate"
+          value={formData.dueDate}
+          onChange={handleChange}
+          className="border p-2 w-full"
+          required
+        />
+      </div>
 
       <button
         type="submit"

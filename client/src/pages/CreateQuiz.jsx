@@ -1,112 +1,172 @@
-import { useState } from "react";
-import axios from "axios";
-import { useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import API from "../api/axios";
 
 export default function CreateQuiz({ user }) {
-  const { classroomId } = useParams(); // ✅ Get classroomId from route
+  const { id: classroomId } = useParams();
   const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
-  const [questions, setQuestions] = useState([{ question: "", options: ["", "", "", ""], answer: "" }]);
+  const [questions, setQuestions] = useState([
+    { question: "", options: ["", "", "", ""], correctOption: 0 }
+  ]);
 
-  // ✅ Debug log
-  console.log("classroomId:", classroomId, "teacherId:", user?._id);
+  // If classroomId is missing, redirect back to dashboard
+  useEffect(() => {
+    if (!classroomId) {
+      console.error("Missing classroomId in route");
+      navigate("/dashboard");
+    }
+  }, [classroomId, navigate]);
 
-  const handleAddQuestion = () => {
-    setQuestions([...questions, { question: "", options: ["", "", "", ""], answer: "" }]);
+  const handleQuestionChange = (qIndex, value) => {
+    const updated = [...questions];
+    updated[qIndex].question = value;
+    setQuestions(updated);
   };
 
-  const handleChangeQuestion = (index, field, value) => {
+  const handleOptionChange = (qIndex, optIndex, value) => {
     const updated = [...questions];
-    if (field === "question" || field === "answer") {
-      updated[index][field] = value;
-    } else {
-      updated[index].options[field] = value;
-    }
+    updated[qIndex].options[optIndex] = value;
     setQuestions(updated);
+  };
+
+  const handleCorrectOptionChange = (qIndex, value) => {
+    const updated = [...questions];
+    updated[qIndex].correctOption = parseInt(value, 10);
+    setQuestions(updated);
+  };
+
+  const addQuestion = () => {
+    setQuestions([
+      ...questions,
+      { question: "", options: ["", "", "", ""], correctOption: 0 }
+    ]);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!classroomId || !user?._id) {
-      console.error("❌ Missing classroomId or teacherId", { classroomId, teacherId: user?._id });
-      alert("Error: Missing classroom or teacher info. Please try again.");
+    // Basic required field checks
+    if (!user?._id) {
+      alert("You must be logged in as a teacher to create a quiz.");
+      return;
+    }
+    if (!classroomId) {
+      alert("No classroom selected.");
+      return;
+    }
+    if (!title.trim()) {
+      alert("Quiz title is required.");
       return;
     }
 
-    try {
-      const response = await axios.post(
-        "http://localhost:5000/api/quizzes/create",
-        {
-          title,
-          questions,
-          classroomId,
-          teacherId: user._id,
-        },
-        { withCredentials: true } // ✅ ensures cookie/session is sent
-      );
+    // Validate questions
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (!q.question.trim()) {
+        alert(`Question ${i + 1} is missing text`);
+        return;
+      }
+      if (q.options.some(opt => !opt.trim())) {
+        alert(`Question ${i + 1} has an empty option`);
+        return;
+      }
+      if (isNaN(q.correctOption) || q.correctOption < 0 || q.correctOption >= q.options.length) {
+        alert(`Question ${i + 1} has an invalid correct option index`);
+        return;
+      }
+    }
 
-      alert("✅ Quiz created successfully!");
+    const payload = {
+      title: title.trim(),
+      classroom: classroomId,
+      teacher: user._id,
+      questions: questions.map(q => ({
+        question: q.question.trim(),
+        options: q.options.map(opt => opt.trim()),
+        correctOption: q.correctOption
+      }))
+    };
+
+    console.log("Submitting quiz payload:", payload);
+
+    try {
+      await API.post("/quizzes", payload);
+      alert("Quiz created successfully!");
       navigate(`/classroom/${classroomId}`);
     } catch (err) {
-      console.error("Error creating quiz:", err.response?.data || err.message);
-      alert("Failed to create quiz. Please try again.");
+      console.error("Error creating quiz:", err);
+      if (err.response?.data?.message) {
+        alert(`Error: ${err.response.data.message}`);
+      } else {
+        alert("Failed to create quiz. Check console for details.");
+      }
     }
   };
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4">Create Quiz</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          placeholder="Quiz Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="w-full p-2 border rounded"
-          required
-        />
+    <form onSubmit={handleSubmit} className="p-4 space-y-4">
+      <h1 className="text-xl font-bold">Create Quiz</h1>
 
-        {questions.map((q, index) => (
-          <div key={index} className="p-4 border rounded space-y-2">
-            <input
-              type="text"
-              placeholder="Question"
-              value={q.question}
-              onChange={(e) => handleChangeQuestion(index, "question", e.target.value)}
-              className="w-full p-2 border rounded"
-              required
-            />
-            {q.options.map((opt, i) => (
-              <input
-                key={i}
-                type="text"
-                placeholder={`Option ${i + 1}`}
-                value={opt}
-                onChange={(e) => handleChangeQuestion(index, i, e.target.value)}
-                className="w-full p-2 border rounded"
-                required
-              />
-            ))}
-            <input
-              type="text"
-              placeholder="Correct Answer"
-              value={q.answer}
-              onChange={(e) => handleChangeQuestion(index, "answer", e.target.value)}
-              className="w-full p-2 border rounded"
-              required
-            />
-          </div>
-        ))}
+      <input
+        type="text"
+        placeholder="Quiz title"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        className="border p-2 w-full"
+      />
 
-        <button type="button" onClick={handleAddQuestion} className="px-4 py-2 bg-gray-500 text-white rounded">
-          ➕ Add Question
-        </button>
-        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">
-          ✅ Create Quiz
-        </button>
-      </form>
-    </div>
+      {questions.map((q, qIndex) => (
+        <div key={qIndex} className="border p-3 rounded space-y-2">
+          <input
+            type="text"
+            placeholder={`Question ${qIndex + 1}`}
+            value={q.question}
+            onChange={(e) => handleQuestionChange(qIndex, e.target.value)}
+            className="border p-2 w-full"
+          />
+          {q.options.map((opt, optIndex) => (
+            <input
+              key={optIndex}
+              type="text"
+              placeholder={`Option ${optIndex + 1}`}
+              value={opt}
+              onChange={(e) => handleOptionChange(qIndex, optIndex, e.target.value)}
+              className="border p-2 w-full"
+            />
+          ))}
+          <label>
+            Correct Option Index:
+            <select
+              value={q.correctOption}
+              onChange={(e) => handleCorrectOptionChange(qIndex, e.target.value)}
+              className="border p-1 ml-2"
+            >
+              {q.options.map((_, idx) => (
+                <option key={idx} value={idx}>
+                  {idx}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={addQuestion}
+        className="bg-blue-500 text-white px-4 py-2 rounded"
+      >
+        Add Question
+      </button>
+
+      <button
+        type="submit"
+        className="bg-green-500 text-white px-4 py-2 rounded"
+      >
+        Save Quiz
+      </button>
+    </form>
   );
 }
