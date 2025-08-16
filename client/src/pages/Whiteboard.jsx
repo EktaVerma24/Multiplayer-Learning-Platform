@@ -185,7 +185,7 @@ export default function Whiteboard({ classroomId, user }) {
   
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4 font-sans">
-      <h1 className="text-3xl font-bold mb-4 text-gray-800">Whiteboard: <span className="text-blue-600">{classroomId}</span></h1>
+      {/* <h1 className="text-3xl font-bold mb-4 text-gray-800">Whiteboard: <span className="text-blue-600">{classroomId}</span></h1> */}
       <div className="flex items-center space-x-2 bg-white p-2 rounded-lg shadow-md mb-4 flex-wrap justify-center">
         {Object.entries(toolIcons).map(([toolName, Icon]) => (
           <button key={toolName} onClick={() => setTool(toolName)} className={`p-2 rounded transition-colors ${tool === toolName ? 'bg-blue-500 text-white' : 'hover:bg-gray-200'}`} title={toolName}><Icon size={24} /></button>

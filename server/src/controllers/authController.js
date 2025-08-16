@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+
 export const register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
@@ -31,5 +32,13 @@ export const login = async (req, res) => {
     res.json({ token, user: userWithoutPassword });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+export const getMe = async (req, res) => {
+  if (req.user) {
+    res.status(200).json(req.user);
+  } else {
+    res.status(404).json({ message: 'User not found' });
   }
 };
