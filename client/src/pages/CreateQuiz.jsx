@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 import { useState, useEffect } from "react";
+=======
+import { useState } from "react";
+import API from "../api/axios";
+>>>>>>> origin/Murtaza
 import { useParams, useNavigate } from "react-router-dom";
 import API from "../api/axios";
 
@@ -46,6 +51,7 @@ export default function CreateQuiz({ user }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+<<<<<<< HEAD
 
     // Basic required field checks
     if (!user?._id) {
@@ -103,6 +109,14 @@ export default function CreateQuiz({ user }) {
         alert("Failed to create quiz. Check console for details.");
       }
     }
+=======
+    await API.post(`/quizzes`, {
+      classroomId,
+      title,
+      questions
+    });
+    navigate(`/classroom/${classroomId}`);
+>>>>>>> origin/Murtaza
   };
 
   return (
