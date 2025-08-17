@@ -16,7 +16,7 @@ export default function Login({ setUser }) {
       navigate("/dashboard");
     } catch (err) {
       console.error(err);
-      alert("Login failed!");
+      alert(err.response.data.message || "Login failed");
     }
   };
 
