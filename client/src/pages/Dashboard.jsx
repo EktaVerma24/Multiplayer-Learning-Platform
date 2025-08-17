@@ -56,7 +56,7 @@ export default function Dashboard({ user }) {
       const res = await API.get(`/challenges/eligible`, { params: { userId: user._id, classroomId: id } });
       console.log("Eligibility check response:", res);
       if(res.data.eligible) {
-        navigate(`/create-challenge/${user._id}`);
+        navigate(`/create-challenge/${id}`);
       } else {
         alert("You are not eligible to create a challenge.");
       }

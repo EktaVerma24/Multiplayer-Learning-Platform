@@ -13,6 +13,9 @@ export const createChallenge = async (req, res) => {
       });
     }
 
+    console.log(classroom);
+    
+
     let imageUrl = null;
 
     // ✅ Handle optional file upload
