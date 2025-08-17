@@ -5,6 +5,7 @@ import Whiteboard from "./Whiteboard.jsx";
 import Quiz from "./Quiz.jsx";
 import Challenge from "./Challenge.jsx";
 import { motion } from "framer-motion";
+import API from "../api/axios.js";
 
 // --- SVG Icons for a better UI ---
 const ChatIcon = () => (
@@ -59,6 +60,7 @@ export default function ClassroomPage({ user }) {
     const [tab, setTab] = useState("chat");
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
+    const [classroom, setClassroom] = useState(null);
 
     useEffect(() => {
     // Add a guard to ensure user object exists before proceeding
@@ -87,6 +89,20 @@ export default function ClassroomPage({ user }) {
     // The optional chaining (?.) prevents errors if user is initially null.
 }, [socket, classroomId, user?._id]);
 
+    useEffect(() => {
+        const getClassroom = async () => {
+            try {
+                const res = await API.get(`/classrooms/${classroomId}`);
+                console.log("Classroom data:", res.data);
+                setClassroom(res.data);
+            } catch (err) {
+                console.error("Failed to fetch classroom:", err);
+            }
+        };
+
+        getClassroom();
+    } , [classroomId])
+
     const sendMessage = (e) => {
     e.preventDefault();
     if (!input.trim() || !socket) return;
@@ -112,8 +128,10 @@ export default function ClassroomPage({ user }) {
                 <header className="mb-8">
                     <p className="text-sm text-slate-500">Welcome to</p>
                     <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight truncate">
-                        Classroom: <span className="text-violet-600">{classroomId}</span>
+                        Classroom: <span className="text-violet-600">{classroom?.name}</span>
                     </h1>
+                    <h2 className="text-lg text-slate-600">{classroom?.description}</h2>
+                    <h3 className="text-md text-slate-600 font-bold">Teacher : {classroom?.teacher?.name}</h3>
                 </header>
 
                 {/* Tabs */}
