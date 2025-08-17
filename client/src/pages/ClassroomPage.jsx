@@ -61,19 +61,51 @@ export default function ClassroomPage({ user }) {
     const [input, setInput] = useState("");
 
     useEffect(() => {
-        if (!socket) return;
-        socket.emit("joinClassroom", { classroomId, user });
-        socket.on("receiveMessage", (message) => setMessages((prev) => [...prev, message]));
-        return () => socket.off("receiveMessage");
-    }, [socket, classroomId, user]);
+    // Add a guard to ensure user object exists before proceeding
+    if (!socket || !user) return;
 
-    const sendMessage = (e) => {
-        e.preventDefault();
-        if (!input.trim()) return;
-        socket.emit("sendMessage", { classroomId, message: input, user });
-        setInput("");
+    // 1. Join the classroom
+    socket.emit("joinClassroom", { classroomId, user });
+    console.log(`Attempting to join classroom: ${classroomId}`); // Debug log
+
+    // 2. Setup listeners
+    const handleReceiveMessage = (message) => {
+        console.log("New message received:", message); // Debug log
+        setMessages((prev) => [...prev, message]);
     };
 
+    socket.on("receiveMessage", handleReceiveMessage);
+
+    // 3. Return a cleanup function
+    return () => {
+        console.log(`Leaving classroom ${classroomId}`);
+        // It's good practice to emit a "leave" event
+        socket.emit("leaveClassroom", { classroomId, user });
+        socket.off("receiveMessage", handleReceiveMessage);
+    };
+    // ✅ FIX: Depend on the user's stable ID, not the entire object.
+    // The optional chaining (?.) prevents errors if user is initially null.
+}, [socket, classroomId, user?._id]);
+
+    const sendMessage = (e) => {
+    e.preventDefault();
+    if (!input.trim() || !socket) return;
+
+    const messageData = {
+        user, // Your own user object
+        message: input,
+        timestamp: new Date().toISOString(), // Match server format
+    };
+
+    // 1. Manually add your own message to your state
+    setMessages((prev) => [...prev, messageData]);
+
+    // 2. Send the message to the server for everyone else
+    socket.emit("sendMessage", { classroomId, message: input, user });
+
+    // 3. Clear the input
+    setInput("");
+};
     return (
         <div className="min-h-screen bg-slate-100 text-slate-800">
             <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -97,25 +129,31 @@ export default function ClassroomPage({ user }) {
                     {tab === "chat" && (
                         <div className="flex flex-col h-[600px]">
                             <div className="flex-grow p-4 space-y-4 overflow-y-auto bg-slate-50 rounded-lg">
-                                {messages.map((msg, i) => {
-                                    // Add a check to ensure msg.user exists before accessing its properties
-                                    if (!msg.user) return null;
-                                    const isCurrentUser = msg.user._id === user._id;
-                                    return (
-                                        <div key={i} className={`flex items-end gap-2 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
-                                            {!isCurrentUser && (
-                                                <div className="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center font-bold text-slate-600 text-sm flex-shrink-0">
-                                                    {msg.user.name.charAt(0).toUpperCase()}
-                                                </div>
-                                            )}
-                                            <div className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl ${isCurrentUser ? 'bg-violet-600 text-white rounded-br-none' : 'bg-slate-200 text-slate-800 rounded-bl-none'}`}>
-                                                {!isCurrentUser && <p className="text-xs font-bold text-violet-600 mb-1">{msg.user.name}</p>}
-                                                <p>{msg.message}</p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+    {messages.map((msg) => {
+        // Guard against malformed message objects
+        if (!msg || !msg.user) return null;
+
+        // Use optional chaining `?.` for safety
+        const isCurrentUser = msg.user._id === user?._id;
+
+        return (
+            // ✅ FIX 1: Use a stable, unique key like the timestamp
+            <div key={msg.timestamp} className={`flex items-end gap-2 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
+                {!isCurrentUser && (
+                    <div className="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center font-bold text-slate-600 text-sm flex-shrink-0">
+                        {/* ✅ FIX 2: Use optional chaining for safety */}
+                        {msg.user.name?.charAt(0).toUpperCase()}
+                    </div>
+                )}
+                <div className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl ${isCurrentUser ? 'bg-violet-600 text-white rounded-br-none' : 'bg-slate-200 text-slate-800 rounded-bl-none'}`}>
+                    {/* ✅ FIX 2: Use optional chaining for safety */}
+                    {!isCurrentUser && <p className="text-xs font-bold text-violet-600 mb-1">{msg.user.name}</p>}
+                    <p>{msg.message}</p>
+                </div>
+            </div>
+        );
+    })}
+</div>
                             <form onSubmit={sendMessage} className="mt-4 flex items-center gap-3">
                                 <input
                                     value={input}

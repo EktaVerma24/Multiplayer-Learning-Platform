@@ -34,11 +34,11 @@ export const setupSocket = (server) => {
     });
 
     socket.on("sendMessage", ({ classroomId, message, user }) => {
-      io.to(classroomId).emit("receiveMessage", {
-        user,
-        message,
-        timestamp: new Date(),
-      });
+        socket.to(classroomId).emit("receiveMessage", {
+          user,
+          message,
+          timestamp: new Date(),
+        });
     });
 
     // This section is updated to work with the Fabric.js component.
