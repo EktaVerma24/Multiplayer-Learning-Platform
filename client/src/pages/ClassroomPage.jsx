@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../context/SocketContext.jsx";
 import Whiteboard from "./Whiteboard.jsx";
 import Quiz from "./Quiz.jsx";
 import Challenge from "./Challenge.jsx";
 import { motion } from "framer-motion";
 import API from "../api/axios.js";
+import { Home } from "lucide-react";
 
 // --- SVG Icons for a better UI ---
 const ChatIcon = () => (
@@ -61,6 +62,7 @@ export default function ClassroomPage({ user }) {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [classroom, setClassroom] = useState(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
     // Add a guard to ensure user object exists before proceeding
@@ -125,6 +127,7 @@ export default function ClassroomPage({ user }) {
     return (
         <div className="min-h-screen bg-slate-100 text-slate-800">
             <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+                <div onClick={() => navigate("/dashboard")} className="absolute top-4 right-8 text-xs font-xs size-xs cursor-pointer z-20"><Home size={20}/></div>
                 <header className="mb-8">
                     <p className="text-sm text-slate-500">Welcome to</p>
                     <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight truncate">

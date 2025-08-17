@@ -131,6 +131,7 @@ export default function Dashboard({ user }) {
                                         <h3 className="text-2xl font-bold text-slate-800 group-hover:text-violet-600 transition-colors duration-300">
                                             {cls.name}
                                         </h3>
+                                        <h3 className="text-md text-slate-500 hover:text-black">Teacher : {cls.teacher?.name}</h3>
                                         <p className="text-slate-500 mt-2">{cls.students.length} {cls.students.length === 1 ? "student" : "students"}</p>
                                     </div>
 
