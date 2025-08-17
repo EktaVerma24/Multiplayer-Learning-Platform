@@ -9,6 +9,7 @@ const submissionSchema = new mongoose.Schema({
 
 const challengeSchema = new mongoose.Schema({
   title: { type: String, required: true },
+  difficulty: { type: String, enum: ["Easy", "Medium", "Hard"], default: "Easy" },
   description: { type: String, required: true },
   classroom: { type: mongoose.Schema.Types.ObjectId, ref: "Classroom", required: true },
   teacher: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },

@@ -38,7 +38,7 @@ export const createChallenge = async (req, res) => {
     const challenge = await Challenge.create({
       title,
       description,
-      difficulty: difficulty || "Medium", // default value
+      difficulty,
       classroom,
       teacher,
       image: imageUrl,
