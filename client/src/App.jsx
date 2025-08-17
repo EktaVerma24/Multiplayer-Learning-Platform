@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import ClassroomPage from "./pages/ClassroomPage.jsx";
 import ProtectedRoute from "./pages/ProtectedRoute.jsx"; 
 import API from "./api/axios";
+import CreateQuiz from "./pages/CreateQuiz.jsx";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -40,17 +41,13 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Your Login component now only needs to set the token. 
-            The user state will be handled by the refresh or next navigation.
-            However, passing setUser for an instant UI update is still good practice.
-        */}
         <Route path="/" element={<Login setUser={setUser} />} />
 
         {/* 👇 All your protected routes are now clean and nested */}
         <Route element={<ProtectedRoute user={user} />}>
           <Route path="/dashboard" element={<Dashboard user={user} />} />
           <Route path="/classroom/:id" element={<ClassroomPage user={user} />} />
-          {/* Add other protected routes here */}
+          <Route path="/create-quiz/:id" element={<CreateQuiz user={user} />} />
         </Route>
 
         <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />
