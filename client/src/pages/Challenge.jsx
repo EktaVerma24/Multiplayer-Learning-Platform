@@ -90,7 +90,7 @@ export default function Challenge({ classroomId }) {
                                     <h2 className="text-xl font-bold text-slate-800">{ch.title}</h2>
                                     <DifficultyBadge difficulty={ch.difficulty} />
                                 </div>
-                                <p className="text-slate-600 text-sm">{ch.description}</p>
+                                <p className="text-slate-600 text-sm">{ch.description.length > 100 ? `${ch.description.slice(0, 100)} . . .` : ch.description}</p>
                             </div>
                             <div className="px-6 pb-6 mt-4">
                                 <button
