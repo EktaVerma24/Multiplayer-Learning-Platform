@@ -15,6 +15,19 @@ const challengeSchema = new mongoose.Schema({
   teacher: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   image: { type: String, default: null },
   submissions: [submissionSchema],
+  testCases: [
+    {
+      input: { type: String, required: true },
+      expectedOutput: { type: String, required: true }
+    }
+  ],
+  languageTemplates: {
+    type: Map,
+    of: new mongoose.Schema({
+      boilerplate: String, // The code stub shown to the user in the editor
+      harness: String,     // The wrapper code used by your backend
+    }, { _id: false })
+  }
 }, { timestamps: true });
 
 export default mongoose.model("Challenge", challengeSchema);

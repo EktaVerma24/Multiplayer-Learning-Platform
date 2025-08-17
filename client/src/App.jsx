@@ -7,6 +7,7 @@ import ProtectedRoute from "./pages/ProtectedRoute.jsx";
 import API from "./api/axios";
 import CreateQuiz from "./pages/CreateQuiz.jsx";
 import CreateChallenge from "./pages/CreateChallenge.jsx";
+import AttemptChallenge from "./pages/AttemptChallenge.jsx";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -50,6 +51,7 @@ function App() {
           <Route path="/classroom/:id" element={<ClassroomPage user={user} />} />
           <Route path="/create-quiz/:id" element={<CreateQuiz user={user} />} />
           <Route path="/create-challenge/:id" element={<CreateChallenge user={user} />} />
+          <Route path="/attemptchallenge/:id" element={<AttemptChallenge user={user} />} />
         </Route>
 
         <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />

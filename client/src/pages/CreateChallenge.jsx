@@ -22,6 +22,11 @@ export default function CreateChallenge({ user }) {
   });
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
+  const [testCases, setTestCases] = useState([{ input: '', expectedOutput: '' }]);
+  const [languageTemplates, setLanguageTemplates] = useState({
+      java: { boilerplate: '', harness: '' },
+      python: { boilerplate: '', harness: '' },
+  });
 
   useEffect(() => {
     if (!classroomId) {
@@ -43,6 +48,32 @@ export default function CreateChallenge({ user }) {
       setImage(null);
       setImagePreview("");
     }
+  };
+
+  const handleTestCaseChange = (index, event) => {
+    const values = [...testCases];
+    values[index][event.target.name] = event.target.value;
+    setTestCases(values);
+  };
+
+  const addTestCase = () => {
+      setTestCases([...testCases, { input: '', expectedOutput: '' }]);
+  };
+
+  const removeTestCase = (index) => {
+      const values = [...testCases];
+      values.splice(index, 1);
+      setTestCases(values);
+  };
+
+  const handleTemplateChange = (lang, field, value) => {
+      setLanguageTemplates(prev => ({
+          ...prev,
+          [lang]: {
+              ...prev[lang],
+              [field]: value
+          }
+      }));
   };
 
   const handleSubmit = async (e) => {
@@ -70,13 +101,15 @@ export default function CreateChallenge({ user }) {
     if (image) {
       payload.append("challengeImage", image);
     }
+    payload.append("testCases", JSON.stringify(testCases));
+    payload.append("languageTemplates", JSON.stringify(languageTemplates));
 
     try {
-      console.log("--- Inspecting FormData Payload ---");
-      for (let [key, value] of payload.entries()) {
-        console.log(`${key}:`, value);
-      }
-      console.log("---------------------------------");
+      // console.log("--- Inspecting FormData Payload ---");
+      // for (let [key, value] of payload.entries()) {
+      //   console.log(`${key}:`, value);
+      // }
+      // console.log("---------------------------------");
       const res = await API.post("/challenges/", payload);
       if (!res) {
         alert("❌ Failed to create challenge.");
@@ -146,6 +179,72 @@ export default function CreateChallenge({ user }) {
                   <img src={imagePreview} alt="Selected preview" className="w-full h-auto rounded-md" />
                 </div>
               )}
+            </div>
+
+            {/* --- Test Cases Section --- */}
+            <div className="space-y-4 p-4 border border-slate-200 rounded-lg">
+                <h3 className="text-lg font-medium text-slate-800">Test Cases</h3>
+                {testCases.map((testCase, index) => (
+                    <div key={index} className="flex flex-col sm:flex-row gap-4 p-3 bg-slate-50 rounded-md relative">
+                        <textarea
+                            name="input"
+                            placeholder={`Input for Test Case #${index + 1}`}
+                            value={testCase.input}
+                            onChange={e => handleTestCaseChange(index, e)}
+                            className="block w-full text-sm p-2 border border-slate-300 rounded-md focus:ring-violet-500"
+                            rows={2}
+                        />
+                        <textarea
+                            name="expectedOutput"
+                            placeholder={`Expected Output #${index + 1}`}
+                            value={testCase.expectedOutput}
+                            onChange={e => handleTestCaseChange(index, e)}
+                            className="block w-full text-sm p-2 border border-slate-300 rounded-md focus:ring-violet-500"
+                            rows={2}
+                        />
+                        <button type="button" onClick={() => removeTestCase(index)} className="absolute -top-4 -right-2 text-black rounded-full h-6 w-6 flex items-center justify-center text-xs font-bold">&times;</button>
+                    </div>
+                ))}
+                <button type="button" onClick={addTestCase} className="text-sm font-semibold text-violet-600 hover:text-violet-800">
+                    + Add Test Case
+                </button>
+            </div>
+
+            {/* --- Language Templates Section --- */}
+            <div className="space-y-4 p-4 border border-slate-200 rounded-lg">
+                <h3 className="text-lg font-medium text-slate-800">Language Templates</h3>
+                {/* Java Template */}
+                <div className="space-y-2">
+                    <label className="font-semibold text-slate-600">Java</label>
+                    <textarea
+                        placeholder="Boilerplate code for Java..."
+                        value={languageTemplates.java.boilerplate}
+                        onChange={e => handleTemplateChange('java', 'boilerplate', e.target.value)}
+                        className="block w-full font-mono text-xs p-2 border border-slate-300 rounded-md min-h-[100px]"
+                    />
+                    <textarea
+                        placeholder="Harness code for Java (use ${userCode})..."
+                        value={languageTemplates.java.harness}
+                        onChange={e => handleTemplateChange('java', 'harness', e.target.value)}
+                        className="block w-full font-mono text-xs p-2 border border-slate-300 rounded-md min-h-[100px]"
+                    />
+                </div>
+                {/* Python Template */}
+                <div className="space-y-2">
+                    <label className="font-semibold text-slate-600">Python</label>
+                    <textarea
+                        placeholder="Boilerplate code for Python..."
+                        value={languageTemplates.python.boilerplate}
+                        onChange={e => handleTemplateChange('python', 'boilerplate', e.target.value)}
+                        className="block w-full font-mono text-xs p-2 border border-slate-300 rounded-md min-h-[100px]"
+                    />
+                    <textarea
+                        placeholder="Harness code for Python (use ${userCode})..."
+                        value={languageTemplates.python.harness}
+                        onChange={e => handleTemplateChange('python', 'harness', e.target.value)}
+                        className="block w-full font-mono text-xs p-2 border border-slate-300 rounded-md min-h-[100px]"
+                    />
+                </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

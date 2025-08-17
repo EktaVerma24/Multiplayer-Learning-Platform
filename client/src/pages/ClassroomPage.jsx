@@ -133,7 +133,7 @@ export default function ClassroomPage({ user }) {
                     <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight truncate">
                         Classroom: <span className="text-violet-600">{classroom?.name}</span>
                     </h1>
-                    <h2 className="text-lg text-slate-600">{classroom?.description}</h2>
+                    <h2 className="text-md text-slate-600">Description : {classroom?.description}</h2>
                     <h3 className="text-md text-slate-600 font-bold">Teacher : {classroom?.teacher?.name}</h3>
                 </header>
 

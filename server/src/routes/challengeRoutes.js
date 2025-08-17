@@ -1,5 +1,5 @@
 import express from "express";
-import { createChallenge , submitSolution , getChallengesByClassroom, eligibleToMakeChallenge } from "../controllers/challengeController.js";
+import { createChallenge , submitSolution , getChallengesByClassroom, eligibleToMakeChallenge , getChallengeById , runCode } from "../controllers/challengeController.js";
 import upload from "../middlewares/multer.js"; 
 const router = express.Router();
 
@@ -14,5 +14,11 @@ router.post("/:challengeId/submit", submitSolution);
 
 // Get Challenges by Classroom
 router.get("/classroom/:classroomId", getChallengesByClassroom);
+
+// Get Challenge by ID
+router.get("/:id", getChallengeById);
+
+// Run Code
+router.post("/run", runCode);
 
 export default router;

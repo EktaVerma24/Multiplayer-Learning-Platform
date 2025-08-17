@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import API from "../api/axios.js";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 // --- SVG Icons for a better UI ---
 const AttemptIcon = () => (
@@ -34,6 +35,7 @@ export default function Challenge({ classroomId }) {
     const [challenges, setChallenges] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (!classroomId) return;
@@ -92,7 +94,7 @@ export default function Challenge({ classroomId }) {
                             </div>
                             <div className="px-6 pb-6 mt-4">
                                 <button
-                                    onClick={() => alert(`Attempting challenge: ${ch.title}`)}
+                                    onClick={() => navigate(`/attemptchallenge/${ch._id}`)}
                                     className="w-full flex items-center justify-center px-4 py-2 font-semibold text-white bg-violet-600 rounded-md 
                                                hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transition-all duration-300"
                                 >
