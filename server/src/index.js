@@ -23,6 +23,8 @@ app.use(
   cors({
     origin: 'http://localhost:5173',
     credentials: true,
+    contentType: ['application/json', 'multipart/form-data'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
   })
 );
 

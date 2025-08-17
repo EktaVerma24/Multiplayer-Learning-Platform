@@ -52,8 +52,15 @@ export default function Dashboard({ user }) {
         alert("You are not eligible to create a quiz.");
       }
     }
-    const goToCreateChallenge = (id) => navigate(`/create-challenge/${id}`);
-    
+  const goToCreateChallenge = async (id) => {
+      const res = await API.get(`/challenges/eligible`, { params: { userId: user._id, classroomId: id } });
+      console.log("Eligibility check response:", res);
+      if(res.data.eligible) {
+        navigate(`/create-challenge/${user._id}`);
+      } else {
+        alert("You are not eligible to create a challenge.");
+      }
+    }    
     const containerVariants = {
         hidden: { opacity: 0 },
         visible: {

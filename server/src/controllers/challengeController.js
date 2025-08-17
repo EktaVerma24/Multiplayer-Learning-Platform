@@ -1,8 +1,9 @@
 import Challenge from "../models/Challenge.js";
 import cloudinary from "../config/cloudinary.js";
+import Classroom from "../models/Classroom.js";
 
-const createChallenge = async (req, res) => {
-  try {
+export const createChallenge = async (req, res) => {
+  try {    
     const { title, description, classroom, teacher, difficulty } = req.body;
 
     // ✅ Validate required fields
@@ -59,7 +60,7 @@ const createChallenge = async (req, res) => {
   }
 };
 
-const submitSolution = async (req, res) => {
+export const submitSolution = async (req, res) => {
   try {
     const { student, code, language } = req.body;
 
@@ -86,7 +87,7 @@ const submitSolution = async (req, res) => {
   }
 };
 
-const getChallengesByClassroom = async (req, res) => {
+export const getChallengesByClassroom = async (req, res) => {
   try {
     const challenges = await Challenge.find({
       classroom: req.params.classroomId,
@@ -98,4 +99,27 @@ const getChallengesByClassroom = async (req, res) => {
   }
 };
 
-export { createChallenge, submitSolution, getChallengesByClassroom };
+export const eligibleToMakeChallenge = async (req, res) => {
+  try {
+    const { userId, classroomId } = req.query;
+    // console.log("Checking eligibility for user:", userId, "in classroom:", classroomId);
+
+    const classroom = await Classroom.findById(classroomId);
+    if (!classroom) {
+      return res.status(404).json({ message: "Classroom not found" });
+    }
+
+    console.log("Classroom found:", classroom.teacher.toString());
+    console.log("User ID:", userId);
+
+    const isTeacher = classroom.teacher.equals(userId.trim());
+    console.log("Is user a teacher?", isTeacher);
+    if (isTeacher) {
+      return res.json({ eligible: true });
+    }
+    res.json({ eligible: false });
+  } catch (error) {
+    console.error("Error checking eligibility:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
