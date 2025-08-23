@@ -139,7 +139,7 @@ export default function Dashboard({ user }) {
                                         <div className="mt-6 pt-4 border-t border-slate-200 flex flex-col sm:flex-row gap-3">
                                             <button
                                                 onClick={() => goToCreateQuiz(cls._id)}
-                                                className="flex items-center justify-center w-full px-4 py-2 font-semibold text-white bg-violet-600 rounded-md 
+                                                className="flex cursor-pointer items-center justify-center w-full px-4 py-2 font-semibold text-white bg-violet-600 rounded-md 
                                                            hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transition-all duration-300"
                                             >
                                                 <QuizIcon />
@@ -147,7 +147,7 @@ export default function Dashboard({ user }) {
                                             </button>
                                             <button
                                                 onClick={() => goToCreateChallenge(cls._id)}
-                                                className="flex items-center justify-center w-full px-4 py-2 font-semibold text-white bg-purple-500 rounded-md 
+                                                className="flex cursor-pointer items-center justify-center w-full px-4 py-2 font-semibold text-white bg-purple-500 rounded-md 
                                                            hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-600 transition-all duration-300"
                                             >
                                                 <ChallengeIcon />

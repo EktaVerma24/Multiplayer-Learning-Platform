@@ -34,7 +34,7 @@ export default function JobSearch() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-white p-8">
+    <div className="min-h-[300px]">
       <motion.h1
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}

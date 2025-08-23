@@ -180,10 +180,13 @@ export default function ClassroomPage({ user }) {
         </div>
 
         {/* Tab Content */}
-        <div className="mt-6 bg-white p-6 rounded-lg shadow-md min-h-[600px]">
+        <div className="mt-6 bg-white p-6 rounded-lg shadow-md min-h-[150px]">
           {tab === "chat" && (
-            <div className="flex flex-col h-[600px]">
+            <div className="flex flex-col h-[300px]">
               <div className="flex-grow p-4 space-y-4 overflow-y-auto bg-slate-50 rounded-lg">
+                {messages.length === 0 && (
+                  <p className="text-slate-400">No messages yet. Start the conversation!</p>
+                )}
                 {messages.map((msg) => {
                   if (!msg || !msg.user) return null;
                   const isCurrentUser = msg.user._id === user?._id;
