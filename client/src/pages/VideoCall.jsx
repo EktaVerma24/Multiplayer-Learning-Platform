@@ -1,3 +1,4 @@
+import { Phone } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import { FaPhone, FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaDesktop, FaShareSquare, FaPhoneSlash, FaSun, FaMoon } from 'react-icons/fa';
@@ -10,6 +11,7 @@ export default function VideoCall() {
   const pcRef = useRef(null);
   const pendingCandidates = useRef([]);
 
+  // State variables for call management and UI
   const [isCaller, setIsCaller] = useState(false);
   const [incomingCall, setIncomingCall] = useState(false);
   const [showIncomingNotification, setShowIncomingNotification] = useState(false);
@@ -279,8 +281,14 @@ export default function VideoCall() {
       <div className={`p-4 shadow-lg flex justify-center items-center gap-6 ${controlBg}`}>
         {/* Start Call Button */}
         {!isInCall && !incomingCall && (
-          <button onClick={startCall} className="p-4 bg-green-500 rounded-full text-white shadow-lg hover:bg-green-600 transition-colors">
-            <FaPhone size={20} />
+          <button
+            onClick={startCall}
+            className="flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-full shadow-lg hover:from-blue-600 hover:to-indigo-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 1.48a1 1 0 01-.542 1.31L5.812 7.749A15.048 15.048 0 0012.251 14.188l1.379-.691a1 1 0 011.31.542l1.48.74A1 1 0 0118 16.847V17a1 1 0 01-1 1H3a1 1 0 01-1-1V3z" />
+            </svg>
+            Start Call
           </button>
         )}
 
