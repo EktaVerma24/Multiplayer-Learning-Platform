@@ -1,7 +1,6 @@
-import { Phone } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
-import { FaPhone, FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaDesktop, FaShareSquare, FaPhoneSlash, FaSun, FaMoon } from 'react-icons/fa';
+import { FaPhone, FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaDesktop, FaShareSquare, FaPhoneSlash, FaSun, FaMoon, FaClosedCaptioning } from 'react-icons/fa';
 
 const socket = io("http://localhost:5000");
 
@@ -11,7 +10,6 @@ export default function VideoCall() {
   const pcRef = useRef(null);
   const pendingCandidates = useRef([]);
 
-  // State variables for call management and UI
   const [isCaller, setIsCaller] = useState(false);
   const [incomingCall, setIncomingCall] = useState(false);
   const [showIncomingNotification, setShowIncomingNotification] = useState(false);
@@ -22,7 +20,10 @@ export default function VideoCall() {
   const [stream, setStream] = useState(null);
   const [screenSharing, setScreenSharing] = useState(false);
   const [isInCall, setIsInCall] = useState(false);
-  const [isLight, setIsLight] = useState(true); // New state for light theme
+  const [isLight, setIsLight] = useState(true);
+  const [captionText, setCaptionText] = useState("");
+  const [isCaptioning, setIsCaptioning] = useState(false);
+  const speechRecognitionRef = useRef(null);
 
   useEffect(() => {
     socket.emit("joinClassroom", { classroomId });
@@ -66,11 +67,16 @@ export default function VideoCall() {
       hangUpCall(false);
     });
 
+    socket.on("webrtc:caption", ({ text }) => {
+      setCaptionText(text);
+    });
+
     return () => {
       socket.off("webrtc:incoming-call");
       socket.off("webrtc:answer");
       socket.off("webrtc:ice-candidate");
       socket.off("webrtc:hangup");
+      socket.off("webrtc:caption");
       hangUpCall(true);
     };
   }, [classroomId]);
@@ -200,6 +206,9 @@ export default function VideoCall() {
       stream.getTracks().forEach((track) => track.stop());
       setStream(null);
     }
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+    }
 
     if (pcRef.current) {
       pcRef.current.close();
@@ -214,6 +223,8 @@ export default function VideoCall() {
     setMicOn(false);
     setScreenSharing(false);
     setIsInCall(false);
+    setCaptionText("");
+    setIsCaptioning(false);
 
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
@@ -226,6 +237,54 @@ export default function VideoCall() {
   const toggleTheme = () => {
     setIsLight(!isLight);
   };
+
+  const toggleCaptioning = () => {
+    if (!isCaptioning) {
+      try {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+          console.error("Speech Recognition is not supported by this browser.");
+          return;
+        }
+        
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+        speechRecognitionRef.current = recognition;
+
+        recognition.onresult = (event) => {
+          const transcript = Array.from(event.results)
+            .map(result => result[0].transcript)
+            .join('');
+          socket.emit("webrtc:caption", { classroomId, text: transcript });
+        };
+
+        recognition.onerror = (event) => {
+          console.error('Speech recognition error:', event.error);
+        };
+
+        recognition.onend = () => {
+          if (isCaptioning) {
+            recognition.start();
+          }
+        };
+
+        recognition.start();
+        setIsCaptioning(true);
+      } catch (error) {
+        console.error("Speech recognition failed to start:", error);
+      }
+    } else {
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+        speechRecognitionRef.current = null;
+      }
+      setIsCaptioning(false);
+      setCaptionText("");
+    }
+  };
+
 
   const containerBg = isLight ? "bg-gray-100" : "bg-gray-900";
   const textColor = isLight ? "text-gray-900" : "text-white";
@@ -260,6 +319,11 @@ export default function VideoCall() {
           <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-xs px-2 py-1 rounded-md text-white">
             Remote Stream
           </div>
+          {captionText && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black bg-opacity-70 text-white text-lg p-2 rounded-lg max-w-xl text-center">
+              {captionText}
+            </div>
+          )}
         </div>
 
         {/* Local Stream Container */}
@@ -281,14 +345,8 @@ export default function VideoCall() {
       <div className={`p-4 shadow-lg flex justify-center items-center gap-6 ${controlBg}`}>
         {/* Start Call Button */}
         {!isInCall && !incomingCall && (
-          <button
-            onClick={startCall}
-            className="flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-full shadow-lg hover:from-blue-600 hover:to-indigo-700 transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 1.48a1 1 0 01-.542 1.31L5.812 7.749A15.048 15.048 0 0012.251 14.188l1.379-.691a1 1 0 011.31.542l1.48.74A1 1 0 0118 16.847V17a1 1 0 01-1 1H3a1 1 0 01-1-1V3z" />
-            </svg>
-            Start Call
+          <button onClick={startCall} className="p-4 bg-green-500 rounded-full text-white shadow-lg hover:bg-green-600 transition-colors">
+            <FaPhone size={20} />
           </button>
         )}
 
@@ -320,6 +378,11 @@ export default function VideoCall() {
             {/* Share Screen */}
             <button onClick={shareScreen} className={`p-4 rounded-full shadow-lg transition-colors ${screenSharing ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-700 hover:bg-gray-600'}`}>
               {screenSharing ? <FaShareSquare size={20} /> : <FaDesktop size={20} />}
+            </button>
+            
+            {/* Toggle Captioning */}
+            <button onClick={toggleCaptioning} className={`p-4 rounded-full shadow-lg transition-colors ${isCaptioning ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-700 hover:bg-gray-600'}`}>
+              <FaClosedCaptioning size={20} />
             </button>
 
             {/* Hang Up */}
