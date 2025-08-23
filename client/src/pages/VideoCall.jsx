@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
-import { FaPhone, FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaDesktop, FaShareSquare, FaPhoneSlash, FaSun, FaMoon, FaClosedCaptioning } from 'react-icons/fa';
+import { FaPhone, FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaDesktop, FaShareSquare, FaPhoneSlash, FaClosedCaptioning } from 'react-icons/fa'; // Removed FaSun, FaMoon
+import { motion } from "framer-motion"; // Import motion for animations
 
 const socket = io("http://localhost:5000");
 
@@ -20,7 +21,6 @@ export default function VideoCall() {
   const [stream, setStream] = useState(null);
   const [screenSharing, setScreenSharing] = useState(false);
   const [isInCall, setIsInCall] = useState(false);
-  const [isLight, setIsLight] = useState(true);
   const [captionText, setCaptionText] = useState("");
   const [isCaptioning, setIsCaptioning] = useState(false);
   const speechRecognitionRef = useRef(null);
@@ -234,10 +234,6 @@ export default function VideoCall() {
     }
   };
 
-  const toggleTheme = () => {
-    setIsLight(!isLight);
-  };
-
   const toggleCaptioning = () => {
     if (!isCaptioning) {
       try {
@@ -285,31 +281,27 @@ export default function VideoCall() {
     }
   };
 
-
-  const containerBg = isLight ? "bg-gray-100" : "bg-gray-900";
-  const textColor = isLight ? "text-gray-900" : "text-white";
-  const headerBg = isLight ? "bg-white" : "bg-gray-800";
-  const videoBg = isLight ? "bg-gray-200" : "bg-gray-800";
-  const videoBorder = isLight ? "border-gray-400" : "border-gray-600";
-  const controlBg = isLight ? "bg-white" : "bg-gray-800";
+  // Common motion button properties for consistency
+  const motionButtonProps = {
+    whileHover: { scale: 1.1, boxShadow: "0px 0px 12px rgba(139, 92, 246, 0.4)" }, // Violet shadow on hover
+    whileTap: { scale: 0.9 },
+    transition: { type: "spring", stiffness: 400, damping: 17 }
+  };
 
   return (
-    <div className={`flex flex-col h-screen font-sans overflow-hidden ${containerBg} ${textColor}`}>
-      {/* Header with Title, Room ID, and Theme Toggle */}
-      <div className={`flex justify-between items-center p-4 shadow-lg ${headerBg}`}>
-        <h1 className="text-xl font-bold text-teal-400">WebRTC Video Call</h1>
+    <div className="flex flex-col min-h-screen font-sans overflow-hidden bg-white text-slate-800">
+      {/* Header with Title and Room ID */}
+      <div className="flex justify-between items-center p-4 shadow-lg bg-white">
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-violet-500">WebRTC Video Call</h1>
         <div className="flex items-center gap-4">
-          <div className="text-sm text-gray-400">Room: {classroomId}</div>
-          <button onClick={toggleTheme} className="p-2 rounded-full text-gray-500 hover:text-teal-400 transition-colors">
-            {isLight ? <FaMoon size={20} /> : <FaSun size={20} />}
-          </button>
+          <div className="text-lg text-slate-500">Room: {classroomId}</div>
         </div>
       </div>
 
       {/* Main Video Grid */}
-      <div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="flex-1 p-6 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Remote Stream Container */}
-        <div className={`relative w-full h-full rounded-lg overflow-hidden border-2 shadow-xl ${videoBg} ${videoBorder}`}>
+        <div className="relative w-full h-full rounded-lg overflow-hidden border-2 border-slate-200 shadow-xl bg-slate-100">
           <video
             ref={remoteVideoRef}
             autoPlay
@@ -327,7 +319,7 @@ export default function VideoCall() {
         </div>
 
         {/* Local Stream Container */}
-        <div className={`relative w-full h-full rounded-lg overflow-hidden border-2 shadow-xl ${videoBg} ${videoBorder}`}>
+        <div className="relative w-full h-full rounded-lg overflow-hidden border-2 border-slate-200 shadow-xl bg-slate-100">
           <video
             ref={localVideoRef}
             autoPlay
@@ -342,23 +334,35 @@ export default function VideoCall() {
       </div>
 
       {/* Floating Control Bar */}
-      <div className={`p-4 shadow-lg flex justify-center items-center gap-6 ${controlBg}`}>
+      <div className="p-4 shadow-lg flex justify-center items-center gap-6 bg-white">
         {/* Start Call Button */}
         {!isInCall && !incomingCall && (
-          <button onClick={startCall} className="p-4 bg-green-500 rounded-full text-white shadow-lg hover:bg-green-600 transition-colors">
+          <motion.button 
+            onClick={startCall} 
+            className="p-4 bg-violet-600 rounded-full text-white shadow-lg"
+            {...motionButtonProps}
+          >
             <FaPhone size={20} />
-          </button>
+          </motion.button>
         )}
 
         {/* Answer/Decline Buttons for Incoming Call */}
         {incomingCall && (
           <>
-            <button onClick={answerCall} className="p-4 bg-green-500 rounded-full text-white shadow-lg hover:bg-green-600 transition-colors">
+            <motion.button 
+              onClick={answerCall} 
+              className="p-4 bg-violet-600 rounded-full text-white shadow-lg"
+              {...motionButtonProps}
+            >
               <FaPhone size={20} />
-            </button>
-            <button onClick={() => hangUpCall(true)} className="p-4 bg-red-600 rounded-full text-white shadow-lg hover:bg-red-700 transition-colors">
+            </motion.button>
+            <motion.button 
+              onClick={() => hangUpCall(true)} 
+              className="p-4 bg-red-600 rounded-full text-white shadow-lg"
+              {...motionButtonProps}
+            >
               <FaPhoneSlash size={20} />
-            </button>
+            </motion.button>
           </>
         )}
 
@@ -366,43 +370,69 @@ export default function VideoCall() {
         {isInCall && (
           <>
             {/* Toggle Mic */}
-            <button onClick={toggleMic} className={`p-4 rounded-full shadow-lg transition-colors ${micOn ? 'bg-gray-700 hover:bg-gray-600' : 'bg-red-600 hover:bg-red-700'}`}>
+            <motion.button 
+              onClick={toggleMic} 
+              className={`p-4 rounded-full shadow-lg ${micOn ? 'bg-violet-500' : 'bg-slate-700'} text-white`}
+              {...motionButtonProps}
+            >
               {micOn ? <FaMicrophone size={20} /> : <FaMicrophoneSlash size={20} />}
-            </button>
+            </motion.button>
 
             {/* Toggle Camera */}
-            <button onClick={toggleCamera} className={`p-4 rounded-full shadow-lg transition-colors ${cameraOn ? 'bg-gray-700 hover:bg-gray-600' : 'bg-red-600 hover:bg-red-700'}`}>
+            <motion.button 
+              onClick={toggleCamera} 
+              className={`p-4 rounded-full shadow-lg ${cameraOn ? 'bg-violet-500' : 'bg-slate-700'} text-white`}
+              {...motionButtonProps}
+            >
               {cameraOn ? <FaVideo size={20} /> : <FaVideoSlash size={20} />}
-            </button>
+            </motion.button>
 
             {/* Share Screen */}
-            <button onClick={shareScreen} className={`p-4 rounded-full shadow-lg transition-colors ${screenSharing ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-700 hover:bg-gray-600'}`}>
+            <motion.button 
+              onClick={shareScreen} 
+              className={`p-4 rounded-full shadow-lg ${screenSharing ? 'bg-violet-500' : 'bg-slate-700'} text-white`}
+              {...motionButtonProps}
+            >
               {screenSharing ? <FaShareSquare size={20} /> : <FaDesktop size={20} />}
-            </button>
+            </motion.button>
             
             {/* Toggle Captioning */}
-            <button onClick={toggleCaptioning} className={`p-4 rounded-full shadow-lg transition-colors ${isCaptioning ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-700 hover:bg-gray-600'}`}>
+            <motion.button 
+              onClick={toggleCaptioning} 
+              className={`p-4 rounded-full shadow-lg ${isCaptioning ? 'bg-violet-500' : 'bg-slate-700'} text-white`}
+              {...motionButtonProps}
+            >
               <FaClosedCaptioning size={20} />
-            </button>
+            </motion.button>
 
             {/* Hang Up */}
-            <button onClick={() => hangUpCall(true)} className="p-4 bg-red-600 rounded-full text-white shadow-lg hover:bg-red-700 transition-colors">
+            <motion.button 
+              onClick={() => hangUpCall(true)} 
+              className="p-4 bg-red-600 rounded-full text-white shadow-lg"
+              {...motionButtonProps}
+            >
               <FaPhoneSlash size={20} />
-            </button>
+            </motion.button>
           </>
         )}
       </div>
 
       {/* Incoming Call Notification */}
       {showIncomingNotification && !isInCall && (
-        <div className={`fixed top-4 right-4 bg-yellow-400 text-gray-900 p-4 rounded-lg shadow-xl animate-pulse`}>
+        <motion.div 
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -50 }}
+          transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
+          className="fixed top-4 right-4 bg-yellow-400 text-gray-900 p-4 rounded-lg shadow-xl"
+        >
           <p className="font-bold text-lg flex items-center">
             🔔 Incoming Call from {callerId}!
           </p>
           <div className="mt-2 text-sm">
-            Click the green phone icon to answer.
+            Click the violet phone icon to answer.
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );
