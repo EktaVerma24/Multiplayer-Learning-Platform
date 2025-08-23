@@ -7,7 +7,6 @@ import Challenge from "./Challenge.jsx";
 import AvailableJobs from "./AvailableJobs.jsx";
 import { motion } from "framer-motion";
 import API from "../api/axios.js";
-import { Home } from "lucide-react";
 import VideoCall from "./VideoCall.jsx";
 
 // --- Icons ---

@@ -23,6 +23,9 @@ const TrashIcon = () => (
     </svg>
 );
 
+const FaHome = () => <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 576 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M280.37 148.26L96 300.11V464a16 16 0 0 0 16 16l112.06-.29a16 16 0 0 0 15.94-16V368a16 16 0 0 1 16-16h64a16 16 0 0 1 16 16v95.64a16 16 0 0 0 16 16.05L464 480a16 16 0 0 0 16-16V300.11L295.63 148.26a12.19 12.19 0 0 0-15.26 0zM571.6 251.47L488 182.58V44.05a12 12 0 0 0-12-12h-40a12 12 0 0 0-12 12v72.61L318.47 43a48 48 0 0 0-61 0L4.34 251.47a12 12 0 0 0-1.6 16.9l25.5 31A12 12 0 0 0 45.15 301l225.1-187.37a12 12 0 0 1 15.5 0L530.9 301a12 12 0 0 0 16.9-1.6l25.5-31a12 12 0 0 0-1.7-16.93z"></path></svg>;
+
+
 
 export default function CreateQuiz({ user }) {
   const { id: classroomId } = useParams();
@@ -136,6 +139,10 @@ export default function CreateQuiz({ user }) {
                 <p className="mt-2 text-slate-500">Fill in the details below to build your quiz.</p>
             </div>
 
+            <a href="/dashboard" className="absolute top-4 right-6 p-2.5 rounded-full bg-violet-100 transition-all duration-300 shadow-sm hover:shadow-md">
+              <FaHome size={20} />
+            </a>
+
             <div className="space-y-2">
                 <label htmlFor="quiz-title" className="text-sm font-medium text-slate-700">Quiz Title</label>
                 <input
@@ -163,7 +170,7 @@ export default function CreateQuiz({ user }) {
                             <button
                                 type="button"
                                 onClick={() => removeQuestion(qIndex)}
-                                className="text-red-500 hover:text-red-700 hover:bg-red-100 p-2 rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="text-red-500 cursor-pointer hover:text-red-700 hover:bg-red-100 p-2 rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                 disabled={questions.length <= 1}
                                 title="Remove Question"
                             >
@@ -195,7 +202,7 @@ export default function CreateQuiz({ user }) {
                                 <select
                                     value={q.correctOption}
                                     onChange={(e) => handleCorrectOptionChange(qIndex, e.target.value)}
-                                    className="ml-2 block w-auto pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm rounded-md transition"
+                                    className="ml-2 cursor-pointer block w-auto pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm rounded-md transition"
                                 >
                                     {q.options.map((_, idx) => (
                                         <option key={idx} value={idx}>

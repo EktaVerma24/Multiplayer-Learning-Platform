@@ -95,7 +95,7 @@ export default function Challenge({ classroomId }) {
                             <div className="px-6 pb-6 mt-4">
                                 <button
                                     onClick={() => navigate(`/attemptchallenge/${ch._id}`)}
-                                    className="w-full flex items-center justify-center px-4 py-2 font-semibold text-white bg-violet-600 rounded-md 
+                                    className="w-full flex items-center justify-center px-4 py-2 cursor-pointer font-semibold text-white bg-violet-600 rounded-md 
                                                hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transition-all duration-300"
                                 >
                                     <AttemptIcon />
