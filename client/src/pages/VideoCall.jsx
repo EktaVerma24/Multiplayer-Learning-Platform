@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import { FaPhone, FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaDesktop, FaShareSquare, FaPhoneSlash, FaClosedCaptioning } from 'react-icons/fa'; // Removed FaSun, FaMoon
+import { motion } from "framer-motion"; // Import motion for animations
 
 const socket = io("http://localhost:5000");
 
@@ -280,6 +281,13 @@ export default function VideoCall() {
     }
   };
 
+  // Common motion button properties for consistency
+  const motionButtonProps = {
+    whileHover: { scale: 1.1, boxShadow: "0px 0px 12px rgba(139, 92, 246, 0.4)" }, // Violet shadow on hover
+    whileTap: { scale: 0.9 },
+    transition: { type: "spring", stiffness: 400, damping: 17 }
+  };
+
   return (
     <div className="flex flex-col h-screen font-sans overflow-hidden bg-white text-slate-800">
       {/* Header with Title and Room ID */}
@@ -329,20 +337,32 @@ export default function VideoCall() {
       <div className="p-4 shadow-lg flex justify-center items-center gap-6 bg-white">
         {/* Start Call Button */}
         {!isInCall && !incomingCall && (
-          <button onClick={startCall} className="p-4 bg-violet-600 rounded-full text-white shadow-lg hover:bg-violet-700 transition-colors">
+          <motion.button 
+            onClick={startCall} 
+            className="p-4 bg-violet-600 rounded-full text-white shadow-lg"
+            {...motionButtonProps}
+          >
             <FaPhone size={20} />
-          </button>
+          </motion.button>
         )}
 
         {/* Answer/Decline Buttons for Incoming Call */}
         {incomingCall && (
           <>
-            <button onClick={answerCall} className="p-4 bg-violet-600 rounded-full text-white shadow-lg hover:bg-violet-700 transition-colors">
+            <motion.button 
+              onClick={answerCall} 
+              className="p-4 bg-violet-600 rounded-full text-white shadow-lg"
+              {...motionButtonProps}
+            >
               <FaPhone size={20} />
-            </button>
-            <button onClick={() => hangUpCall(true)} className="p-4 bg-red-600 rounded-full text-white shadow-lg hover:bg-red-700 transition-colors">
+            </motion.button>
+            <motion.button 
+              onClick={() => hangUpCall(true)} 
+              className="p-4 bg-red-600 rounded-full text-white shadow-lg"
+              {...motionButtonProps}
+            >
               <FaPhoneSlash size={20} />
-            </button>
+            </motion.button>
           </>
         )}
 
@@ -350,43 +370,69 @@ export default function VideoCall() {
         {isInCall && (
           <>
             {/* Toggle Mic */}
-            <button onClick={toggleMic} className={`p-4 rounded-full shadow-lg transition-colors ${micOn ? 'bg-violet-500 hover:bg-violet-600' : 'bg-slate-700 hover:bg-slate-600'}`}>
+            <motion.button 
+              onClick={toggleMic} 
+              className={`p-4 rounded-full shadow-lg ${micOn ? 'bg-violet-500' : 'bg-slate-700'} text-white`}
+              {...motionButtonProps}
+            >
               {micOn ? <FaMicrophone size={20} /> : <FaMicrophoneSlash size={20} />}
-            </button>
+            </motion.button>
 
             {/* Toggle Camera */}
-            <button onClick={toggleCamera} className={`p-4 rounded-full shadow-lg transition-colors ${cameraOn ? 'bg-violet-500 hover:bg-violet-600' : 'bg-slate-700 hover:bg-slate-600'}`}>
+            <motion.button 
+              onClick={toggleCamera} 
+              className={`p-4 rounded-full shadow-lg ${cameraOn ? 'bg-violet-500' : 'bg-slate-700'} text-white`}
+              {...motionButtonProps}
+            >
               {cameraOn ? <FaVideo size={20} /> : <FaVideoSlash size={20} />}
-            </button>
+            </motion.button>
 
             {/* Share Screen */}
-            <button onClick={shareScreen} className={`p-4 rounded-full shadow-lg transition-colors ${screenSharing ? 'bg-violet-500 hover:bg-violet-600' : 'bg-slate-700 hover:bg-slate-600'}`}>
+            <motion.button 
+              onClick={shareScreen} 
+              className={`p-4 rounded-full shadow-lg ${screenSharing ? 'bg-violet-500' : 'bg-slate-700'} text-white`}
+              {...motionButtonProps}
+            >
               {screenSharing ? <FaShareSquare size={20} /> : <FaDesktop size={20} />}
-            </button>
+            </motion.button>
             
             {/* Toggle Captioning */}
-            <button onClick={toggleCaptioning} className={`p-4 rounded-full shadow-lg transition-colors ${isCaptioning ? 'bg-violet-500 hover:bg-violet-600' : 'bg-slate-700 hover:bg-slate-600'}`}>
+            <motion.button 
+              onClick={toggleCaptioning} 
+              className={`p-4 rounded-full shadow-lg ${isCaptioning ? 'bg-violet-500' : 'bg-slate-700'} text-white`}
+              {...motionButtonProps}
+            >
               <FaClosedCaptioning size={20} />
-            </button>
+            </motion.button>
 
             {/* Hang Up */}
-            <button onClick={() => hangUpCall(true)} className="p-4 bg-red-600 rounded-full text-white shadow-lg hover:bg-red-700 transition-colors">
+            <motion.button 
+              onClick={() => hangUpCall(true)} 
+              className="p-4 bg-red-600 rounded-full text-white shadow-lg"
+              {...motionButtonProps}
+            >
               <FaPhoneSlash size={20} />
-            </button>
+            </motion.button>
           </>
         )}
       </div>
 
       {/* Incoming Call Notification */}
       {showIncomingNotification && !isInCall && (
-        <div className="fixed top-4 right-4 bg-yellow-400 text-gray-900 p-4 rounded-lg shadow-xl animate-pulse">
+        <motion.div 
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -50 }}
+          transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
+          className="fixed top-4 right-4 bg-yellow-400 text-gray-900 p-4 rounded-lg shadow-xl"
+        >
           <p className="font-bold text-lg flex items-center">
             🔔 Incoming Call from {callerId}!
           </p>
           <div className="mt-2 text-sm">
-            Click the green phone icon to answer.
+            Click the violet phone icon to answer.
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );
