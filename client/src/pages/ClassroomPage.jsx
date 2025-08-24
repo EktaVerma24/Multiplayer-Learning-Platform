@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../context/SocketContext.jsx";
 import Whiteboard from "./Whiteboard.jsx";
 import Quiz from "./Quiz.jsx";
@@ -79,11 +79,23 @@ export default function ClassroomPage({ user }) {
   const { id } = useParams();
   const classroomId = id;
   const { socket } = useSocket();
-  const [tab, setTab] = useState("chat");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [classroom, setClassroom] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const searchParams = new URLSearchParams(location.search);
+  const initialTab = searchParams.get("tab") || "chat";
+  const [tab, setTab] = useState(initialTab);
+
+  const handleTabChange = (newTab) => {
+    setTab(newTab);
+    const params = new URLSearchParams(location.search);
+    params.set("tab", newTab);
+    navigate({ search: params.toString() }, { replace: true });
+  };
 
   const LoadingSpinner = () => (
     <div className="h-screen flex justify-center items-center p-10">
@@ -164,30 +176,30 @@ export default function ClassroomPage({ user }) {
 
         {/* Tabs */}
         <div className="border-b border-slate-300 flex items-center">
-          <TabButton active={tab === "chat"} onClick={() => setTab("chat")} icon={<ChatIcon />}>
+          <TabButton active={tab === "chat"} onClick={() => handleTabChange("chat")} icon={<ChatIcon />}>
             Chat
           </TabButton>
           <TabButton
             active={tab === "whiteboard"}
-            onClick={() => setTab("whiteboard")}
+            onClick={() => handleTabChange("whiteboard")}
             icon={<WhiteboardIcon />}
           >
             Whiteboard
           </TabButton>
-          <TabButton active={tab === "quiz"} onClick={() => setTab("quiz")} icon={<QuizIcon />}>
+          <TabButton active={tab === "quiz"} onClick={() => handleTabChange("quiz")} icon={<QuizIcon />}>
             Quizzes
           </TabButton>
           <TabButton
             active={tab === "challenge"}
-            onClick={() => setTab("challenge")}
+            onClick={() => handleTabChange("challenge")}
             icon={<ChallengeIcon />}
           >
             Challenges
           </TabButton>
-          <TabButton active={tab === "video"} onClick={() => setTab("video")} icon={<VideoIcon />}>
+          <TabButton active={tab === "video"} onClick={() => handleTabChange("video")} icon={<VideoIcon />}>
             Video Call
           </TabButton>
-          <TabButton active={tab === 'availablejobs'} onClick={() => setTab('availablejobs')} icon={<JobsIcon />}>Jobs</TabButton>
+          <TabButton active={tab === 'availablejobs'} onClick={() => handleTabChange('availablejobs')} icon={<JobsIcon />}>Jobs</TabButton>
         </div>
 
         {/* Tab Content */}
