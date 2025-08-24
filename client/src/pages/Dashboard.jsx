@@ -12,7 +12,8 @@ import domtoimage from "dom-to-image-more";
 // SVG icons for buttons
 const QuizIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg> );
 const ChallengeIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> );
-
+const GenerateIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>);
+const SearchIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" /></svg>);
 
 export default function Dashboard({ user }) {
     const navigate = useNavigate();
@@ -25,7 +26,7 @@ export default function Dashboard({ user }) {
     const [notesLoading, setNotesLoading] = useState(false);
     const [downloading, setDownloading] = useState(null); 
     
-    const [notesVisible, setNotesVisible] = useState(false);
+    const [notesVisible, setNotesVisible] = useState(true);
     const [activeNoteId, setActiveNoteId] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -55,7 +56,7 @@ export default function Dashboard({ user }) {
             setNotesLoading(true);
             const res = await API.post("/notes/generate", { syllabus });
             const newNote = res.data;
-            
+            console.log("Generated Note:", newNote);
             setNotes([newNote, ...notes]);
             setSyllabus("");
             
@@ -69,7 +70,10 @@ export default function Dashboard({ user }) {
         }
     };
 
-    // --- Correctly placed handleDownloadPDF function ---
+    const handleNoteToggle = (noteId) => {
+        setActiveNoteId(prevId => (prevId === noteId ? null : noteId));
+    };
+
     const handleDownloadPDF = async (note) => {
     const noteContent = document.getElementById(`note-content-${note._id}`);
     if (!noteContent) return;
@@ -96,6 +100,7 @@ export default function Dashboard({ user }) {
                 imageWidth = imageHeight * ratio;
             }
 
+
             pdf.setFontSize(16);
             pdf.text(note.syllabus, 10, 15);
             pdf.addImage(dataUrl, "PNG", 10, 25, imageWidth, imageHeight);
@@ -108,10 +113,6 @@ export default function Dashboard({ user }) {
         setDownloading(null);
     }
 };
-
-    const handleNoteToggle = (noteId) => {
-        setActiveNoteId(prevId => (prevId === noteId ? null : noteId));
-    };
     
     const filteredNotes = notes.filter(note =>
         note.syllabus.toLowerCase().includes(searchTerm.toLowerCase())
@@ -154,71 +155,92 @@ export default function Dashboard({ user }) {
     if (error) { return ( <div className="flex justify-center items-center h-screen"><p>{error}</p></div> ); }
 
     return (
-        <div className="min-h-screen bg-white text-slate-800 p-6 sm:p-8">
+        <div className="min-h-screen bg-gray-50 text-slate-800 p-6 sm:p-8">
             <div className="max-w-7xl mx-auto">
                 <h1 className="text-3xl sm:text-4xl font-extrabold mb-2">Welcome back, <span className="text-violet-500">{user.name}</span>!</h1>
                 <p className="text-slate-500 text-lg mb-8">Choose a classroom to continue your journey.</p>
                 
-                {/* AI Notes Generator Section */}
-                <div className="mb-10 p-6 bg-violet-50 border border-violet-200 rounded-lg shadow">
-                    <h2 className="text-2xl font-bold text-violet-700 mb-4">📘 AI Notes Generator</h2>
-                    <textarea
-                        className="border p-3 w-full rounded-md mb-3"
-                        placeholder="Enter syllabus or topic..."
-                        value={syllabus}
-                        onChange={(e) => setSyllabus(e.target.value)}
-                    />
-                    <button onClick={handleGenerateNotes} disabled={notesLoading} className="bg-violet-600 text-white px-5 py-2 rounded-md hover:bg-violet-700 transition">
-                        {notesLoading ? "Generating..." : "Generate Notes"}
-                    </button>
+                {/* Enhanced AI Notes Generator Section */}
+                <div className="mb-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                    <div className="flex items-center mb-4">
+                        <span className="p-2 bg-violet-100 text-violet-600 rounded-lg mr-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.707.707M12 21v-1m-4.636-1.636l.707-.707" /></svg>
+                        </span>
+                        <h2 className="text-2xl font-bold text-gray-800">AI Notes Generator</h2>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <textarea
+                            className="flex-grow border border-gray-300 p-3 w-full rounded-md focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition"
+                            placeholder="Enter a topic, like 'Quantum Physics' or 'The Roman Empire'..."
+                            value={syllabus}
+                            onChange={(e) => setSyllabus(e.target.value)}
+                        />
+                        <button 
+                            onClick={handleGenerateNotes} 
+                            disabled={notesLoading} 
+                            className="flex items-center justify-center bg-violet-600 text-white px-5 py-3 rounded-md font-semibold hover:bg-violet-700 transition disabled:bg-violet-300"
+                        >
+                            <GenerateIcon />
+                            {notesLoading ? "Generating..." : "Generate Notes"}
+                        </button>
+                    </div>
 
-                    {/* Expandable Notes List */}
-                    <div className="mt-6">
-                        <div onClick={() => setNotesVisible(!notesVisible)} className="flex items-center justify-between cursor-pointer border-b pb-2">
+                    <div className="mt-8">
+                        <div onClick={() => setNotesVisible(!notesVisible)} className="flex items-center justify-between cursor-pointer p-3 rounded-md hover:bg-gray-100 transition">
                             <h3 className="text-xl font-bold text-gray-700">My Notes</h3>
                             <svg className={`w-6 h-6 text-gray-600 transition-transform ${notesVisible ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                         </div>
 
                         {notesVisible && (
                             <div className="mt-4">
-                                <input
-                                    type="text"
-                                    placeholder="Search notes by title..."
-                                    className="w-full p-2 border border-gray-300 rounded-md mb-4"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                                <div className="space-y-2 max-h-96 overflow-y-auto p-1">
-                                    {filteredNotes.map((note) => (
-                                        <div key={note._id} className="bg-white rounded-lg shadow-sm border">
-                                            <div onClick={() => handleNoteToggle(note._id)} className="p-4 cursor-pointer flex justify-between items-center">
-                                                <h4 className="font-semibold text-violet-700">{note.syllabus}</h4>
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); handleDownloadPDF(note); }}
-                                                    disabled={downloading === note._id}
-                                                    className="bg-gray-200 text-gray-700 text-xs px-3 py-1 rounded-md hover:bg-gray-300 transition"
-                                                >
-                                                    {downloading === note._id ? "..." : "PDF"}
-                                                </button>
-                                            </div>
-                                            {activeNoteId === note._id && (
-                                                <div id={`note-content-${note._id}`} className="p-4 border-t border-gray-200">
-                                                    {note.sections?.map((section, i) => (
-                                                        <div key={i} className="mt-3 first:mt-0">
-                                                            <h5 className="font-bold text-gray-800">{section.title}</h5>
-                                                            {section.imageUrl && (
-                                                                <img src={`http://localhost:5000/api/notes/image-proxy?url=${encodeURIComponent(section.imageUrl)}`} 
-                                                                 alt={section.title} 
-                                                                 //crossOrigin="anonymous"
-                                                                 className="my-2 max-w-full h-auto rounded-md border" />
-                                                            )}
-                                                            <p className="text-sm text-gray-700 whitespace-pre-wrap mt-1">{section.content}</p>
-                                                        </div>
-                                                    ))}
+                                <div className="relative mb-4">
+                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                                        <SearchIcon />
+                                    </span>
+                                    <input
+                                        type="text"
+                                        placeholder="Search your notes..."
+                                        className="w-full p-2 pl-10 border border-gray-300 rounded-md focus:ring-1 focus:ring-violet-500 focus:border-violet-500"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-3 max-h-96 overflow-y-auto p-1">
+                                    {filteredNotes.length > 0 ? (
+                                        filteredNotes.map((note) => (
+                                            <div key={note._id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                                                <div onClick={() => handleNoteToggle(note._id)} className="p-4 cursor-pointer flex justify-between items-center hover:bg-gray-50 transition">
+                                                    <h4 className="font-semibold text-violet-800">{note.syllabus}</h4>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleDownloadPDF(note); }}
+                                                        disabled={downloading === note._id}
+                                                        className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full font-medium hover:bg-gray-300 transition disabled:opacity-50"
+                                                    >
+                                                        {downloading === note._id ? "..." : "PDF"}
+                                                    </button>
                                                 </div>
-                                            )}
+                                                {activeNoteId === note._id && (
+                                                    <div id={`note-content-${note._id}`} className="p-4 border-t border-gray-200 bg-gray-50">
+                                                        {note.sections?.map((section, i) => (
+                                                            <div key={i} className="mb-4 last:mb-0">
+                                                                <h5 className="font-bold text-gray-800 text-md">{section.title}</h5>
+                                                                {section.imageUrl && (
+                                                                    <img src={`image-proxy?url=${encodeURIComponent(section.imageUrl)}`} alt={section.title} className="my-2 max-w-sm h-auto rounded-md border" />
+                                                                )}
+                                                                <p className="text-sm text-gray-600 whitespace-pre-wrap mt-1">{section.content}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center p-8 border-2 border-dashed rounded-lg text-gray-500">
+                                            <p>No notes found.</p>
+                                            <p className="text-sm">Try generating a new note or adjusting your search.</p>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -226,12 +248,8 @@ export default function Dashboard({ user }) {
                 </div>
 
                 {/* Classrooms Section */}
-                {classrooms.length === 0 ? (
-                    <div className="text-center py-20 bg-slate-50 rounded-lg">
-                        <h3 className="text-2xl font-bold text-slate-700">No classrooms available.</h3>
-                    </div>
-                ) : (
-                    <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" variants={containerVariants} initial="hidden" animate="visible">
+                {classrooms.length > 0 && (
+                     <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" variants={containerVariants} initial="hidden" animate="visible">
                         {classrooms.map((cls) => (
                             <motion.div key={cls._id} className="bg-white rounded-lg shadow-md overflow-hidden border" variants={cardVariants}>
                                 <div className="p-6 cursor-pointer group flex flex-col justify-between h-full" onClick={() => enterClassroom(cls._id)}>
