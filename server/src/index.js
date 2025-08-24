@@ -11,6 +11,7 @@ import authRoutes from './routes/authRoutes.js';
 import classroomRoutes from './routes/classroomRoutes.js';
 import challengeRoutes from './routes/challengeRoutes.js';
 import quizRoutes from './routes/quizRoutes.js';
+import noteRoutes from './routes/noteRoutes.js';
 
 
 const app = express();
@@ -23,6 +24,8 @@ app.use(
   cors({
     origin: 'http://localhost:5173',
     credentials: true,
+    contentType: ['application/json', 'multipart/form-data'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
   })
 );
 
@@ -31,7 +34,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/classrooms', classroomRoutes);
 app.use('/api/challenges', challengeRoutes);
 app.use('/api/quizzes', quizRoutes);  
-
+app.use('/api/notes', noteRoutes);
 
 
 const server = http.createServer(app);

@@ -12,10 +12,11 @@ export default function Login({ setUser }) {
     try {
       const res = await API.post("/auth/login", { email, password });
       setUser(res.data.user);
+      localStorage.setItem("token", res.data.token);
       navigate("/dashboard");
     } catch (err) {
       console.error(err);
-      alert("Login failed!");
+      alert(err.response.data.message || "Login failed");
     }
   };
 
