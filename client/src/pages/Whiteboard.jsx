@@ -40,6 +40,13 @@ export default function Whiteboard({ classroomId, user }) {
   const isDrawingShape = useRef(false);
   const shapeRef = useRef(null);
   const startPoint = useRef(null);
+  const [loading, setLoading] = useState(true);
+
+  const LoadingSpinner = () => (
+    <div className="h-screen flex justify-center items-center p-10">
+        <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-violet-500"></div>
+    </div>
+  );
   
   useEffect(() => { toolRef.current = tool; }, [tool]);
   useEffect(() => { colorRef.current = color; }, [color]);
@@ -182,7 +189,7 @@ export default function Whiteboard({ classroomId, user }) {
   const handleRedo = () => { if (historyIndex < history.length - 1) { isRemoteUpdate.current = true; const newIndex = historyIndex + 1; setHistoryIndex(newIndex); fabricRef.current.loadFromJSON(history[newIndex], () => { fabricRef.current.renderAll(); emitState(history[newIndex]); isRemoteUpdate.current = false; }); } };
   const handleClear = () => { fabricRef.current.clear(); saveState(); };
   const handleDownload = () => { const dataURL = fabricRef.current.toDataURL({ format: 'png' }); const link = document.createElement('a'); link.href = dataURL; link.download = `whiteboard-${classroomId}.png`; link.click(); };
-  
+  if(loading) return <LoadingSpinner />;
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 font-sans">
       {/* <h1 className="text-3xl font-bold mb-4 text-gray-800">Whiteboard: <span className="text-blue-600">{classroomId}</span></h1> */}

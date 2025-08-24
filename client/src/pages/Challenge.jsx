@@ -11,7 +11,7 @@ const AttemptIcon = () => (
 );
 
 const LoadingSpinner = () => (
-    <div className="flex justify-center items-center p-10">
+    <div className="h-screen flex justify-center items-center p-10">
         <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-violet-500"></div>
     </div>
 );

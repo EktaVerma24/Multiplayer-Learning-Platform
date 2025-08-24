@@ -9,7 +9,11 @@ export default function JobSearch() {
   const [page, setPage] = useState(1);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
-
+  const LoadingSpinner = () => (
+    <div className="h-screen flex justify-center items-center p-10">
+      <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-violet-500"></div>
+    </div>
+  );
 
   const fetchJobs = async () => {
     setLoading(true);
@@ -32,6 +36,8 @@ export default function JobSearch() {
       setLoading(false);
     }
   };
+
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="min-h-[300px]">

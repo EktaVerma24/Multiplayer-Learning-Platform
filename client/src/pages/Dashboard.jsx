@@ -31,6 +31,12 @@ export default function Dashboard({ user }) {
     const [searchTerm, setSearchTerm] = useState("");
     const [showAllClassrooms, setShowAllClassrooms] = useState(false);
 
+    const LoadingSpinner = () => (
+        <div className="h-screen flex justify-center items-center p-10">
+            <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-violet-500"></div>
+        </div>
+    );
+
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
@@ -151,7 +157,7 @@ export default function Dashboard({ user }) {
     const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
     const cardVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
 
-    if (loading) { return ( <div className="flex justify-center items-center h-screen bg-gray-50"><p>Loading dashboard...</p></div> ); }
+    if (loading) return <LoadingSpinner />;    
     if (error) { return ( <div className="flex justify-center items-center h-screen bg-gray-50"><p className="p-6 bg-red-100 text-red-700 rounded-lg">{error}</p></div> ); }
 
     return (

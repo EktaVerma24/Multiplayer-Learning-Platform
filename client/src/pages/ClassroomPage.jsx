@@ -85,6 +85,12 @@ export default function ClassroomPage({ user }) {
   const [classroom, setClassroom] = useState(null);
   const navigate = useNavigate();
 
+  const LoadingSpinner = () => (
+    <div className="h-screen flex justify-center items-center p-10">
+        <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-violet-500"></div>
+    </div>
+  );
+
   // join + leave socket rooms
   useEffect(() => {
     if (!socket || !user) return;
@@ -130,6 +136,8 @@ export default function ClassroomPage({ user }) {
     socket.emit("sendMessage", { classroomId, message: input, user });
     setInput("");
   };
+
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800">
