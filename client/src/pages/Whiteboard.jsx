@@ -184,7 +184,7 @@ export default function Whiteboard({ classroomId, user }) {
   const handleDownload = () => { const dataURL = fabricRef.current.toDataURL({ format: 'png' }); const link = document.createElement('a'); link.href = dataURL; link.download = `whiteboard-${classroomId}.png`; link.click(); };
   
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4 font-sans">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 font-sans">
       {/* <h1 className="text-3xl font-bold mb-4 text-gray-800">Whiteboard: <span className="text-blue-600">{classroomId}</span></h1> */}
       <div className="flex items-center space-x-2 bg-white p-2 rounded-lg shadow-md mb-4 flex-wrap justify-center">
         {Object.entries(toolIcons).map(([toolName, Icon]) => (

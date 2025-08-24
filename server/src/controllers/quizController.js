@@ -87,7 +87,7 @@ export const submitQuiz = async (req, res) => {
         });
 
         // Send the score and the correct answers back to the frontend
-        res.json({ message: "Quiz submitted", score, correctAnswers });
+        res.json({ message: "Quiz submitted", score, correctAnswers , attempt });
     } catch (err) {
         console.error("Error submitting quiz:", err);
         res.status(500).json({ message: "Failed to submit quiz" });

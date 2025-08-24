@@ -7,7 +7,7 @@ import API from "../api/axios";
 
 // Libraries for PDF Generation
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import domtoimage from "dom-to-image-more";
 
 // --- SVG Icons ---
 const QuizIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg> );
@@ -98,15 +98,15 @@ export default function Dashboard({ user }) {
             }
             pdf.setFontSize(16);
             pdf.text(note.syllabus, 10, 15);
-            pdf.addImage(imageData, "PNG", 10, 25, imageWidth, imageHeight);
-            pdf.save(`${note.syllabus.replace(/\s+/g, '_') || 'note'}.pdf`);
+            pdf.addImage(dataUrl, "PNG", 10, 25, imageWidth, imageHeight);
+            pdf.save(`${note.syllabus.replace(/\s+/g, "_") || "note"}.pdf`);
         } catch (error) {
             console.error("Failed to generate PDF:", error);
             alert("Could not create PDF. Please try again.");
         } finally {
             setDownloading(null);
         }
-    };
+};
     
     const filteredNotes = notes.filter(note =>
         note.syllabus.toLowerCase().includes(searchTerm.toLowerCase())
@@ -281,7 +281,7 @@ export default function Dashboard({ user }) {
                                                             <div key={i} className="mb-4 last:mb-0">
                                                                 <h5 className="font-bold text-gray-800 text-md">{section.title}</h5>
                                                                 {section.imageUrl && (
-                                                                    <img src={`http://image-proxy?url=${encodeURIComponent(section.imageUrl)}`} alt={section.title} className="my-2 max-w-sm h-auto rounded-md border" />
+                                                                    <img src={`http://localhost:5000/api/notes/image-proxy?url=${encodeURIComponent(section.imageUrl)}`} alt={section.title} className="my-2 max-w-sm h-auto rounded-md border" />
                                                                 )}
                                                                 <p className="text-sm text-gray-600 whitespace-pre-wrap mt-1">{section.content}</p>
                                                             </div>

@@ -36,12 +36,13 @@ Each object in the array represents a section of the notes and MUST follow this 
   "content": "A detailed, well-written paragraph explaining the concept thoroughly.",
   "imageUrl": "An optional, fully-qualified, and publicly accessible URL that directly links to a relevant image file (ending in .png, .jpg, .svg, or .gif). If no valid image is found, this field MUST be null."
 }
-
+Important: DO NOT use images from Wikimedia, Wikipedia, or any site ending with *.wikimedia.org or *.wikipedia.org. 
+If you cannot find a suitable alternative, set "imageUrl": null.
 HERE IS AN EXAMPLE of the desired output for the topic "Photosynthesis":
 [{
   "title": "Overview of Photosynthesis",
   "content": "Photosynthesis is the process by which green plants and some other organisms use sunlight to synthesize foods with the help of chlorophyll pigment. This process generally involves the green pigment chlorophyll and generates oxygen as a byproduct.",
-  "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/2D_photosynthesis_en.svg/800px-2D_photosynthesis_en.svg.png"
+  "imageUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQWZfDVCJijk62semVnojOmKWuIekc65yzm7iznAHeggfO-fxWy8zzPDyfoOSDq7bEA6B0&usqp=CAU"
 }, {
   "title": "Light-Dependent Reactions",
   "content": "The light-dependent reactions take place on the thylakoid membranes in the chloroplast. Chlorophyll absorbs light energy, which is converted into chemical energy in the form of ATP and NADPH. Water is split in this process, releasing oxygen.",
