@@ -74,38 +74,42 @@ export default function Dashboard({ user }) {
     };
 
     const handleDownloadPDF = async (note) => {
-        const noteContent = document.getElementById(`note-content-${note._id}`);
-        if (!noteContent) {
-            alert("Could not find note content to download.");
-            return;
-        }
-        setDownloading(note._id);
-        try {
-            const canvas = await html2canvas(noteContent, {
-                scale: 2,
-                backgroundColor: '#ffffff',
-                useCORS: true 
-            });
-            const imageData = canvas.toDataURL("image/png");
-            const pdf = new jsPDF('p', 'mm', 'a4');
+    const noteContent = document.getElementById(`note-content-${note._id}`);
+    if (!noteContent) return;
+
+    setDownloading(note._id);
+
+    try {
+        // Generate PNG using dom-to-image-more
+        const dataUrl = await domtoimage.toPng(noteContent, { bgcolor: "#ffffff", quality: 1 });
+
+        const img = new Image();
+        img.src = dataUrl;
+
+        img.onload = () => {
+            const pdf = new jsPDF("p", "mm", "a4");
             const { width: pdfWidth, height: pdfHeight } = pdf.internal.pageSize;
-            const ratio = canvas.width / canvas.height;
+
+            const ratio = img.width / img.height;
             let imageWidth = pdfWidth - 20;
             let imageHeight = imageWidth / ratio;
+
             if (imageHeight > pdfHeight - 20) {
                 imageHeight = pdfHeight - 20;
                 imageWidth = imageHeight * ratio;
             }
+
             pdf.setFontSize(16);
             pdf.text(note.syllabus, 10, 15);
             pdf.addImage(dataUrl, "PNG", 10, 25, imageWidth, imageHeight);
             pdf.save(`${note.syllabus.replace(/\s+/g, "_") || "note"}.pdf`);
-        } catch (error) {
-            console.error("Failed to generate PDF:", error);
-            alert("Could not create PDF. Please try again.");
-        } finally {
-            setDownloading(null);
-        }
+        };
+    } catch (error) {
+        console.error("Failed to generate PDF:", error);
+        alert("Could not create PDF. Please try again.");
+    } finally {
+        setDownloading(null);
+    }
 };
     
     const filteredNotes = notes.filter(note =>
