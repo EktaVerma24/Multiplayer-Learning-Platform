@@ -6,25 +6,41 @@ const API = axios.create({
     baseURL: 'http://localhost:5000/api', // Make sure this is your backend's base URL
 });
 
-// Use an interceptor to add the auth token to every request
+// Use a request interceptor to add the auth token to every request
 API.interceptors.request.use((config) => {
-    // 1. Get the user info from localStorage
     const userInfo = localStorage.getItem('userInfo');
 
     if (userInfo) {
-        // 2. Parse it and get the token
         const token = JSON.parse(userInfo).token;
         
-        // 3. If the token exists, add it to the headers
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
     }
     
-    // 4. Return the modified config
     return config;
 }, (error) => {
     return Promise.reject(error);
 });
+
+// Add a response interceptor to handle errors, especially 401 Unauthorized
+API.interceptors.response.use(
+    (response) => response, // Just return the response if it's successful
+    (error) => {
+        // Check if the response status is 401
+        if (error.response && error.response.status === 401) {
+            console.error('401 Unauthorized: Session expired or invalid token.');
+
+            // Clear the invalid user info from local storage
+            localStorage.removeItem('userInfo');
+            
+            // Redirect to the login page
+            window.location.href = '/login'; 
+            // In a React Router app, you might use: navigate('/login', { replace: true });
+        }
+
+        return Promise.reject(error);
+    }
+);
 
 export default API;
