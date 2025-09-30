@@ -31,13 +31,6 @@ const BOILERPLATE_CODE = {
     typescript: `function solve(): void {\n  // Write your code here\n  console.log("Hello, TypeScript!");\n}`,
 };
 
-const LoadingSpinner = () => (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
-        <FaSpinner className="animate-spin text-5xl text-violet-500" />
-        <p className="mt-4 text-lg font-semibold text-slate-700">Loading Challenge...</p>
-    </div>
-);
-
 const ErrorDisplay = ({ message }) => (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-red-600">
         <FaExclamationTriangle className="text-5xl" />
@@ -56,7 +49,11 @@ export default function AttemptChallenge() {
     const [code, setCode] = useState(BOILERPLATE_CODE.javascript);
     const [isRunning, setIsRunning] = useState(false);
     const [runResult, setRunResult] = useState({ status: null, message: "" });
-
+    const LoadingSpinner = () => (
+        <div className="h-screen flex justify-center items-center p-10">
+            <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-violet-500"></div>
+        </div>
+    );
 
     useEffect(() => {
         const fetchChallenge = async () => {

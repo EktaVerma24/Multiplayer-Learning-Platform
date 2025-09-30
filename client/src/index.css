@@ -1,2 +1,42 @@
 @import "tailwindcss";
+/* src/index.css */
+
+@media print {
+  /* This class will be added to the body when printing starts */
+  body.is-printing {
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Hide every element on the page by default */
+  body.is-printing > #root > * {
+    display: none;
+  }
+  
+  /* Then, make ONLY the element we want to print visible */
+  body.is-printing .printable-area {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+
+  /* Make sure the note card and its content are styled for a document */
+  .printable-area {
+    margin: 0 !important;
+    padding: 15mm !important; /* Standard document margins */
+    border: none !important;
+    box-shadow: none !important;
+    overflow-y: visible !important; /* Show all overflowing content */
+    max-height: none !important; /* Remove the scroll limit */
+  }
+
+  /* Hide the UI header (title and PDF button) inside the note */
+  .printable-area .note-header {
+    display: none;
+  }
+}
+
+
 
