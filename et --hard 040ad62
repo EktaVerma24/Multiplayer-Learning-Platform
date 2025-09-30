@@ -1,0 +1,62 @@
+[33m0f085b1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mMurtaza[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Merge branch 'Murtaza' of https://github.com/EktaVerma24/Multiplayer-Learning-Platform
+[33m040ad62[m dom-to-image push
+[33ma1de1a1[m Merge branch 'ErrorRes' of https://github.com/EktaVerma24/Multiplayer-Learning-Platform
+[33mf388bb3[m gitgnore
+[33m6fb352a[m Merge branch 'Ekta' of https://github.com/EktaVerma24/Multiplayer-Learning-Platform into ErrorRes
+[33m0313cde[m Merge branch 'Ekta' of https://github.com/EktaVerma24/Multiplayer-Learning-Platform into ErrorRes
+[33ma588e25[m ui fix
+[33mc6089e9[m ui
+[33m6619564[m Merge branch 'Ekta' of https://github.com/EktaVerma24/Multiplayer-Learning-Platform into ErrorRes
+[33mceb5cb7[m added ai notes generator
+[33md6f013b[m minor changes
+[33m12f3313[m Merge branch 'Ekta' of https://github.com/EktaVerma24/Multiplayer-Learning-Platform into Murtaza
+[33m936a7c6[m minor changes
+[33m9458ce2[m ui
+[33m2659366[m ui changes
+[33mc4a0cfa[m minor fix
+[33m50e5c66[m Resolved merge conflict in VideoCall.jsx
+[33m87d4876[m enhanced ui of videocall
+[33m4ed9283[m[33m ([m[1;31morigin/Murtaza[m[33m)[m minor changes
+[33m62aace5[m Merge branch 'Ekta' of https://github.com/EktaVerma24/Multiplayer-Learning-Platform into Murtaza
+[33m763b24c[m Functionality : available jobs
+[33m3320896[m[33m ([m[1;31morigin/Ekta[m[33m)[m quiz submission and displaying results for teacher
+[33m5966a02[m fixed challenge card size
+[33mfe70e21[m whole lotta changes made the whole attempting coding challenge page with multiple functionality challenge
+[33md85ced6[m added description field in classrooms
+[33mcb6e25b[m classRoom name issue resolved
+[33md7da823[m Bug : quiz creation bug resolved
+[33m841e71b[m BUG : Challenge Creation bug resolved
+[33m057b1a3[m Chat Functionality properly working with improved UI
+[33m2dfe0fc[m Bug : difficulty was not present in challenege Model + enhanced the UI of classroomPage and Challeneg
+[33m43d7c9d[m FEATURE : Challenge creation with image (FE)
+[33m070b794[m FEATURE : now only eligible user can create a quiz . The one who is teacher and present in classroom can create quiz.
+[33md0536f2[m Login failed coming everytime you put something wrong in password but now proper msg is coming like invalid credentials BUG fixed
+[33mfe75835[m page navigates you back to login page after refresh : BUG Solved
+[33m136e147[m quiz layout change
+[33mb711dea[m Merge remote-tracking branch 'origin/Ekta' into Murtaza
+[33m64dc02f[m socket bugs related to whiteboard solved
+[33m4c54a0b[m Remove node_modules from tracking
+[33m88f44dd[m git ignore
+[33m63089f4[m Update .gitignore
+[33m848ba11[m fixed working of createQuiz and challenge
+[33m71d4951[m fixed
+[33mfa0fc9e[m changes
+[33m64aa14b[m added create quiz and challenge
+[33m45b20bb[m white board functionalities (with a bug)
+[33mb3c781b[m nom env try
+[33m5e8ccdb[m fixed quiz and challenges page
+[33m927afd4[m client side merge with conflicts resolved
+[33m39ebdf1[m added frontend
+[33m0bd8170[m added whiteboard
+[33m67f7e26[m image addition in challenges
+[33m8d978c5[m controller related changes + testing
+[33m71cad08[m gitignore changes
+[33m84ba59c[m added quiz and challenge routes
+[33mbee040a[m final changes related to nm and env
+[33m2948377[m commit env dump
+[33m2beaa5b[m env related changes
+[33m8eff79f[m push nodemodules related shit
+[33m7d5e2b2[m ignored
+[33m497f086[m Update .gitignore
+[33m80a5928[m added routes
+[33ma9f3088[m initial
