@@ -89,6 +89,9 @@ export default function ClassroomPage({ user }) {
   const searchParams = new URLSearchParams(location.search);
   const initialTab = searchParams.get("tab") || "chat";
   const [tab, setTab] = useState(initialTab);
+  const [adminChatAccess, setAdminChatAccess] = useState(false);
+  const [showInput , setShowInput] = useState(false);
+  const [paused, setPaused] = useState(false);
 
   const handleTabChange = (newTab) => {
     setTab(newTab);
@@ -103,6 +106,13 @@ export default function ClassroomPage({ user }) {
     </div>
   );
 
+  useEffect(() => {
+    if(user._id == classroom?.teacher?._id){
+      setAdminChatAccess(true);
+    }
+  }, [user._id, classroom]);
+
+  
 
   // join + leave socket rooms
   useEffect(() => {
@@ -122,6 +132,23 @@ export default function ClassroomPage({ user }) {
       socket.off("receiveMessage", handleReceiveMessage);
     };
   }, [socket, classroomId, user?._id]);
+
+  const toggleShowInput = () => {
+    setShowInput((prev) => {
+      socket.emit("chatPause", { paused : !prev });
+      return !prev;
+    });
+  }
+
+  useEffect(() => {
+    socket.on("chatPausedByAdmin", ({ paused }) => {
+      setPaused(paused); 
+    });
+
+    console.log(paused)
+
+    return () => socket.off("chatPausedByAdmin");
+  }, [])
 
   // fetch classroom info
   useEffect(() => {
@@ -242,18 +269,49 @@ export default function ClassroomPage({ user }) {
                 })}
               </div>
               <form onSubmit={sendMessage} className="mt-4 flex items-center gap-3">
-                <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  className="block w-full px-4 py-3 border border-slate-300 rounded-full shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition"
-                  placeholder="Type a message..."
-                />
-                <button
-                  type="submit"
-                  className="flex-shrink-0 bg-violet-600 text-white p-3 rounded-full hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transition-all duration-300 shadow-md hover:shadow-lg"
-                >
-                  <SendIcon />
-                </button>
+                {adminChatAccess && (
+                  <label className="flex flex-col items-center justify-center gap-2 cursor-pointer select-none">
+                    <span className="text-xs ml-4 font-medium w-20 text-slate-700">Pause Chat?</span>
+                    <button
+                      type="button"
+                      aria-checked={showInput}
+                      onClick={toggleShowInput}
+                      className={`relative inline-flex h-7 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${
+                        showInput ? "bg-violet-600" : "bg-slate-300"
+                      }`}
+                      style={{ outline: "none" }}
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-300 ${
+                          showInput ? "translate-x-5" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                  </label>
+                )}
+
+                {(paused && !adminChatAccess) && (
+                  <p className="text-red-500 font-semibold">Chat Paused by Admin</p>
+                )}
+
+                {(!paused || adminChatAccess) && (
+                  <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    className="block w-full px-4 py-3 border border-slate-300 rounded-full shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition"
+                    placeholder={paused && !adminChatAccess ? "Chat is paused" : "Type a message..."}
+                    disabled={paused && adminChatAccess ? false : paused}
+                  />
+                )}
+
+                {(!paused || adminChatAccess) && (
+                  <button
+                    type="submit"
+                    className="flex-shrink-0 bg-violet-600 text-white p-3 rounded-full hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transition-all duration-300 shadow-md hover:shadow-lg"
+                  >
+                    <SendIcon />
+                  </button>
+                )}
               </form>
             </div>
           )}

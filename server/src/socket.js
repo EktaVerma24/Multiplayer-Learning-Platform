@@ -61,6 +61,10 @@ export const setupSocket = (server) => {
       });
     });
 
+    socket.on("chatPause", ({ paused }) => {
+      io.emit("chatPausedByAdmin", { paused });
+    });
+
     // ------------------- WHITEBOARD -------------------
     socket.on("canvas-state", ({ classroomId, state }) => {
       if (!classroomId) return;
