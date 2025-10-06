@@ -92,6 +92,8 @@ export default function ClassroomPage({ user }) {
   const [adminChatAccess, setAdminChatAccess] = useState(false);
   const [showInput , setShowInput] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [usersInChat, setUsersInChat] = useState([]);
+  const [kick, setKick] = useState(null);
 
   const handleTabChange = (newTab) => {
     setTab(newTab);
@@ -112,7 +114,29 @@ export default function ClassroomPage({ user }) {
     }
   }, [user._id, classroom]);
 
-  
+  useEffect(() => {
+    socket.on("usersInChat", ({ users }) => {
+      setUsersInChat(users);
+      console.log("current users in chat:", users);
+    });
+    
+    return () => socket.off("usersInChat");
+  }, [socket]);
+
+  useEffect(() => {
+    socket.on("kicked", ({ message, userId }) => {
+      console.log("before r");
+      
+      if(userId !== user._id) return;
+
+      console.log("after r");
+      
+      alert(message);
+      console.log("navigating to dashboard");
+      navigate("/dashboard");
+    }); 
+    return () => socket.off("kicked");
+  }, [socket, navigate]);
 
   // join + leave socket rooms
   useEffect(() => {
@@ -139,6 +163,27 @@ export default function ClassroomPage({ user }) {
       return !prev;
     });
   }
+
+  useEffect(() => {
+    console.log("hiiiiii");
+    console.log(kick);
+    console.log(adminChatAccess);
+    
+    if(kick != null && adminChatAccess){
+      socket.emit("kickUser", { classroomId, userId: kick });
+      console.log("user kickedd", kick);
+      console.log("hi");
+      
+      const banUser = async () => await API.patch(`/classrooms/ban/${classroomId}`, { userId: kick });
+      console.log(banUser);
+      
+      banUser();
+
+      setKick(null);
+    }
+    
+    return () => socket.off("KickUser");
+  }, [socket, kick, adminChatAccess]);
 
   useEffect(() => {
     socket.on("chatPausedByAdmin", ({ paused }) => {
@@ -252,7 +297,7 @@ export default function ClassroomPage({ user }) {
                           {msg.user.name?.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <div
+                      <div onClick={() => { if(adminChatAccess && !isCurrentUser) setKick(msg.user._id) }}
                         className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl ${
                           isCurrentUser
                             ? "bg-violet-600 text-white rounded-br-none"

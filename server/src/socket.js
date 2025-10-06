@@ -5,6 +5,8 @@ const canvasStates = {};
 
 // Track peers per classroom for WebRTC
 const roomPeers = new Map();
+const userInfo = new Map();
+const userIdToSocketId = new Map();
 
 export const setupSocket = (server) => {
   const io = new Server(server, {
@@ -37,6 +39,10 @@ export const setupSocket = (server) => {
         socket.emit("canvas-state-from-server", canvasStates[classroomId]);
       }
 
+      console.log("uuser", user);
+
+      userIdToSocketId.set(user?._id, socket.id);
+
       // Send list of existing peers for WebRTC
       const peers = Array.from(roomPeers.get(classroomId)).filter(
         (id) => id !== socket.id
@@ -59,6 +65,35 @@ export const setupSocket = (server) => {
         message,
         timestamp: new Date(),
       });
+    });
+
+    socket.on("kickUser", ({ classroomId, userId }) => {
+      if (!classroomId || !userId) return;
+      console.log("utbk", userIdToSocketId);
+      
+      const targetSocketID = userIdToSocketId.get(userId);
+      console.log("user to be kicked", targetSocketID);
+      
+      if (!targetSocketID) return;
+      console.log("before", roomPeers);
+      console.log(roomPeers.get(classroomId));
+      roomPeers.get(classroomId)?.delete(targetSocketID);
+      console.log("user kicked", targetSocketID);
+      console.log("after", roomPeers);
+      
+      if(roomPeers.get(classroomId)?.size === 0) roomPeers.delete(classroomId);
+
+      const updatedUsers = Array.from(roomPeers.get(classroomId) || []).map((id) => {
+        return {
+          userId: id,
+          name: "Participant",
+        };
+      });
+
+      io.to(classroomId).emit("usersInChat", { users: updatedUsers });
+      console.log("user kick hone wale ki userId", userId);
+      io.to(targetSocketID).emit("kicked", { message: "You have been kicked out by the admin.", userId: userId });
+      io.to(classroomId).emit("userKicked", { userId });
     });
 
     socket.on("chatPause", ({ paused }) => {

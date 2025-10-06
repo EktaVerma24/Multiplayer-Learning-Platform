@@ -146,7 +146,23 @@ export default function Dashboard({ user }) {
 
     const displayedClassrooms = showAllClassrooms ? classrooms : classrooms.slice(0, 3);
     
-    const enterClassroom = (id) => navigate(`/classroom/${id}`);
+    // const enterClassroom = (id) => navigate(`/classroom/${id}`);
+    const enterClassroom = (id) => {
+        const classroom = classrooms.find(cls => cls._id === id);
+        console.log("classroom", classroom);
+        console.log(user._id);
+        console.log(classroom.bannedUsers);
+        
+        if (classroom) {
+        const isBanned = classroom.bannedUsers?.some(banEntry => banEntry.userId.toString() === user._id.toString());
+        if (isBanned) { 
+            alert("You have been banned from this classroom.");
+            return;
+        } else {
+            navigate(`/classroom/${id}`);
+        }
+    }
+    };
 
     const goToCreateQuiz = async (id) => {
         try {

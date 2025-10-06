@@ -28,3 +28,24 @@ export const getClassroomById = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+export const banStudents = async (req, res) => {
+  try {
+    const { classroomId } = req.params;
+    const { userId } = req.body;
+
+    if(!userId) return res.status(400).json({ message: "User ID is required" });
+    const classroom = await Classroom.findById(classroomId);
+    if (!classroom) return res.status(404).json({ message: "Classroom not found" });
+
+    if(classroom.bannedUsers.includes(userId)) {
+      return res.status(400).json({ message: "User is already banned" });
+    }
+    const banEntry = { userId };
+    classroom.bannedUsers.push(banEntry);
+    await classroom.save();
+    res.json(classroom.bannedUsers);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
