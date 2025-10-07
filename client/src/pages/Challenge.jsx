@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import API from "../api/axios.js";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 
 // --- SVG Icons for a better UI ---
 const AttemptIcon = () => (
