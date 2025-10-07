@@ -16,7 +16,7 @@ export const generateNotes = async (req, res) => {
 
         // --- GEMINI API Configuration ---
         const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-        const GEMINI_MODEL = "gemini-1.5-flash";
+        const GEMINI_MODEL = "gemini-2.5-flash";
 
         if (!GEMINI_API_KEY) {
             return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
