@@ -155,6 +155,7 @@ export default function Whiteboard({ classroomId, user }) {
 
 
 // 2. Add the new handler function for summarization
+// Replace your existing handleSummarize function with this one.
 const handleSummarize = async () => {
   if (!fabricRef.current) return;
 
@@ -162,35 +163,20 @@ const handleSummarize = async () => {
   setSummary('');
 
   try {
-    const canvas = fabricRef.current;
+    // 1. Convert the entire canvas to a PNG image data URL (Base64 string)
+    const imageDataURL = fabricRef.current.toDataURL({ format: 'png' });
 
-    console.log("canvas", canvas);
-    
-
-    // This is the core logic to get text from your canvas
-    const textContent = canvas.getObjects()
-      .filter(obj => obj.type === 'i-text') // Your code creates 'i-text' for text objects
-      .map(obj => obj.text)
-      .join('\n');
-
-    console.log("textContent", textContent);
-
-    if (!textContent.trim()) {
-      setSummary("There's no text on the whiteboard to summarize.");
-      setIsSummarizing(false);
-      return;
-    }
-
-    // Send the extracted text to your backend API
-    const response = await API.post('/summarize', {
-      content: textContent,
+    // 2. Send this image data to your backend API under the 'image' key
+    const response = await API.post('/notes/summarize', {
+      image: imageDataURL,
     });
 
     setSummary(response.data.summary);
 
   } catch (error) {
     console.error("Error generating summary:", error);
-    setSummary("Sorry, an error occurred while generating the summary.");
+    const errorMessage = error.response?.data?.error || "An error occurred while generating the summary.";
+    setSummary(`Sorry, ${errorMessage}`);
   } finally {
     setIsSummarizing(false);
   }
@@ -251,8 +237,8 @@ const handleSummarize = async () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 font-sans">
-      <div className="absolute top-70 left-1/2 -translate-x-1/2 z-20 flex items-center bg-white/90 backdrop-blur-lg rounded-full shadow-xl px-4 py-2 gap-2 border border-gray-200">
+    <div className="flex flex-col mt-8 items-center justify-center min-h-screen p-4 font-sans">
+      <div className="absolute top-61 left-1/2 -translate-x-1/2 z-20 flex items-center bg-white/90 backdrop-blur-lg rounded-full shadow-xl px-4 py-2 gap-2 border border-gray-200">
         {/* Tool Buttons */}
         <div className="flex gap-1">
           {Object.entries(toolIcons).map(([toolName, Icon]) => (
@@ -295,7 +281,7 @@ const handleSummarize = async () => {
           />
         </div>
         {/* Divider */}
-        <div className="w-px h-8 bg-gray-300 mx-2"></div>
+        <div className="w-px h-8 bg-gray-300 mx-4"></div>
         {/* Undo/Redo/Clear/Download/Import */}
         <div className="flex gap-1">
           <button

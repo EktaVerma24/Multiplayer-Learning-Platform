@@ -1,6 +1,13 @@
 // server/src/controllers/noteController.js
 import Note from "../models/Note.js";
 import axios from "axios";
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createWorker } from 'tesseract.js';
+import sharp from 'sharp';
+
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// const visionClient = new vision.ImageAnnotatorClient();
 
 // POST /api/notes/generate
 export const generateNotes = async (req, res) => {
@@ -140,3 +147,59 @@ export const getImageProxy = async (req, res) => {
         }
     }
 };
+
+export const generateSummary = async (req, res) => {
+    const worker = await createWorker('eng', 1, {
+      logger: m => console.log(m)
+    });
+  
+    try {
+      const { image } = req.body;
+      if (!image) {
+        return res.status(400).json({ error: 'No image provided.' });
+      }
+  
+      // --- NEW: Image Pre-processing with Sharp ---
+      const base64ImageData = image.replace(/^data:image\/png;base64,/, "");
+      const imageBuffer = Buffer.from(base64ImageData, 'base64');
+  
+      // Convert to black and white, increase contrast, and sharpen
+      const processedImageBuffer = await sharp(imageBuffer)
+        .grayscale()
+        .threshold(128) // This creates a pure black & white image
+        .sharpen()
+        .toBuffer();
+
+        console.log(processedImageBuffer);
+        
+      // --- Step 1: OCR with Tesseract.js ---
+      console.log("Starting OCR process with Tesseract...");
+      
+      // Give the PROCESSED image to Tesseract
+      const { data: { text } } = await worker.recognize(processedImageBuffer);
+
+      const extractedText = text;
+      console.log("OCR Finished. Extracted Text:", extractedText);
+  
+      if (!extractedText || !extractedText.trim()) {
+        return res.json({ summary: "No text was detected on the whiteboard." });
+      }
+  
+      // --- Step 2: Summarization with Gemini ---
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // Corrected model name
+      const prompt = `Summarize the following notes from a whiteboard: "${extractedText}"`;
+  
+      const summaryResult = await model.generateContent(prompt);
+      const summaryResponse = summaryResult.response;
+      const summaryText = summaryResponse.text();
+  
+      res.json({ summary: summaryText });
+  
+    } catch (error) {
+      console.error('Error in AI processing:', error);
+      res.status(500).json({ error: 'Failed to process the whiteboard image.' });
+    } finally {
+      await worker.terminate();
+      console.log("Tesseract worker terminated.");
+    }
+  }

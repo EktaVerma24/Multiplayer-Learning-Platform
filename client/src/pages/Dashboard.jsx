@@ -340,7 +340,7 @@ export default function Dashboard({ user }) {
                                         <div className="p-6 flex flex-col justify-between h-full group">
                                             <div className="cursor-pointer" onClick={() => enterClassroom(cls._id)}>
                                                 <h3 className="text-xl font-bold text-slate-800 group-hover:text-violet-600 transition-colors duration-300">{cls.name}</h3>
-                                                <p className="text-slate-500 text-sm mt-1">Taught by **{cls.teacher?.name}**</p>
+                                                <p className="text-slate-500 text-sm mt-1">Taught by {cls.teacher?.name}</p>
                                                 <p className="text-slate-500 text-sm mt-2">{cls.students?.length || 0} {cls.students?.length === 1 ? "student" : "students"}</p>
                                             </div>
                                             {user.role === "teacher" && (
