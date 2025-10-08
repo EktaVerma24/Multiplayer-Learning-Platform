@@ -2,8 +2,10 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useSocket } from "../context/SocketContext";
 import { fabric } from "fabric";
 import {
-  Pencil, Eraser, Type, MousePointer2, Circle, Square, Trash2, Undo, Redo, Download, Image as ImageIcon
+  Pencil, Eraser, Type, MousePointer2, Circle, Square, Trash2, Undo, Redo, Download, Image as ImageIcon,
+  Sparkles
 } from 'lucide-react';
+import API from "../api/axios";
 
 const toolIcons = {
   select: MousePointer2, pencil: Pencil, eraser: Eraser,
@@ -35,6 +37,8 @@ export default function Whiteboard({ classroomId, user }) {
 
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [summary, setSummary] = useState('');
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const isRemoteUpdate = useRef(false);
   const saveStateRef = useRef();
   const isDrawingShape = useRef(false);
@@ -148,6 +152,49 @@ export default function Whiteboard({ classroomId, user }) {
       }
     };
   }, [classroomId, socket, user]);
+
+
+// 2. Add the new handler function for summarization
+const handleSummarize = async () => {
+  if (!fabricRef.current) return;
+
+  setIsSummarizing(true);
+  setSummary('');
+
+  try {
+    const canvas = fabricRef.current;
+
+    console.log("canvas", canvas);
+    
+
+    // This is the core logic to get text from your canvas
+    const textContent = canvas.getObjects()
+      .filter(obj => obj.type === 'i-text') // Your code creates 'i-text' for text objects
+      .map(obj => obj.text)
+      .join('\n');
+
+    console.log("textContent", textContent);
+
+    if (!textContent.trim()) {
+      setSummary("There's no text on the whiteboard to summarize.");
+      setIsSummarizing(false);
+      return;
+    }
+
+    // Send the extracted text to your backend API
+    const response = await API.post('/summarize', {
+      content: textContent,
+    });
+
+    setSummary(response.data.summary);
+
+  } catch (error) {
+    console.error("Error generating summary:", error);
+    setSummary("Sorry, an error occurred while generating the summary.");
+  } finally {
+    setIsSummarizing(false);
+  }
+};
 
   useEffect(() => {
     const canvas = fabricRef.current;
@@ -296,11 +343,26 @@ export default function Whiteboard({ classroomId, user }) {
             style={{ display: "none" }}
             onChange={handleImportImage}
           />
+          <button
+    onClick={handleSummarize}
+    disabled={isSummarizing}
+    className="p-2 rounded-full bg-white border-2 border-transparent hover:bg-purple-100 hover:border-purple-400 hover:text-purple-600 disabled:opacity-50"
+    title="Generate AI Summary"
+  >
+    <Sparkles size={22} />
+  </button>
         </div>
       </div>
       <div className="bg-white shadow-lg rounded-lg overflow-hidden border-2 border-gray-300">
         <canvas ref={canvasRef} />
       </div>
+
+      {summary && (
+  <div className="w-[90%] max-w-[800px] mt-4 p-4 bg-white shadow-lg rounded-lg border-2 border-gray-200">
+    <h3 className="font-bold text-lg mb-2">AI Summary ✨</h3>
+    <p className="text-gray-700 whitespace-pre-wrap">{summary}</p>
+  </div>
+)}
     </div>
   );
 }

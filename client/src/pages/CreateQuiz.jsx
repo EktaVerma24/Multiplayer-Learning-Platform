@@ -39,6 +39,7 @@ export default function CreateQuiz({ user }) {
   const [questions, setQuestions] = useState([
     { question: "", options: ["", "", "", ""], correctOption: 0 },
   ]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!classroomId) {

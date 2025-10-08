@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import API from "../api/axios";
+import { motion } from "framer-motion";
 
 // --- SVG Icons ---
 const QuizIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg> );
@@ -25,6 +25,9 @@ export default function Dashboard({ user }) {
     const [activeNoteId, setActiveNoteId] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [showAllClassrooms, setShowAllClassrooms] = useState(false);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [newClassroomData, setNewClassroomData] = useState({ name: "", description: "" });
+    const [createLoading, setCreateLoading] = useState(false);
 
     const LoadingSpinner = () => (
         <div className="h-screen flex justify-center items-center p-10">
@@ -51,6 +54,58 @@ export default function Dashboard({ user }) {
         };
         fetchInitialData();
     }, []);
+
+    // 🏆 FIX: Ensures the newly created classroom displays the teacher's name immediately.
+    const handleCreateClassroom = async (e) => {
+        e.preventDefault();
+        setCreateLoading(true);
+
+        // 1. CONSTRUCT THE CORRECT PAYLOAD (Creator ID sent to server)
+        const payload = { 
+            ...newClassroomData, 
+            creatorId: user._id // Sends the creator ID, which your server needs
+        };
+
+        console.log("Sending Classroom Payload:", payload);
+        
+        try{
+            const res = await API.post("/classrooms", payload);
+            
+            // --- NEW CLIENT-SIDE LOGIC ---
+            // The server might return the classroom with a populated 'teacher' field, 
+            // but if it only returns the ID, this ensures the UI updates instantly.
+            const createdClassroom = res.data;
+            if (!createdClassroom.teacher) {
+                // If the server didn't populate the 'teacher' field, manually add the current user's info
+                createdClassroom.teacher = {
+                    _id: user._id,
+                    name: user.name, // Assuming 'user.name' holds the teacher's name
+                };
+            }
+            createdClassroom.students = createdClassroom.students || []; // Ensure students array exists
+
+            setClassrooms([createdClassroom, ...classrooms]);
+            // --- END NEW LOGIC ---
+
+            setNewClassroomData({ name: "", description: "" });
+            setShowCreateModal(false);
+            alert(`Classroom "${res.data.name}" created successfully!`);
+        } catch (err) {
+            console.error("Failed to create classroom:", err);
+            
+            const serverErrorMessage = 
+                err.response?.data?.error || 
+                err.response?.data?.message || 
+                (err.response?.data ? JSON.stringify(err.response.data) : 'Unknown server validation error.');
+
+            console.error("Server Error Message (400 Bad Request):", serverErrorMessage);
+
+            alert(`Error creating classroom: ${serverErrorMessage}`);
+        } finally {
+            setCreateLoading(false);
+        }
+    };
+
 
     const handleGenerateNotes = async () => {
         if (!syllabus.trim()) return alert("Enter a syllabus or topic first.");
@@ -195,11 +250,54 @@ export default function Dashboard({ user }) {
     const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
     const cardVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
 
-    if (loading) return <LoadingSpinner />;    
+    if (loading) return <LoadingSpinner />; 
     if (error) { return ( <div className="flex justify-center items-center h-screen bg-gray-50"><p className="p-6 bg-red-100 text-red-700 rounded-lg">{error}</p></div> ); }
 
     return (
         <div className="min-h-screen bg-white text-slate-800 p-6 sm:p-8">
+            {showCreateModal && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+                        <h3 className="text-xl font-bold mb-4">Create New Classroom</h3>
+                        <form onSubmit={handleCreateClassroom}>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700">Classroom Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-violet-500 focus:border-violet-500"
+                                    value={newClassroomData.name}
+                                    onChange={(e) => setNewClassroomData({ ...newClassroomData, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700">Description</label>
+                                <textarea
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-violet-500 focus:border-violet-500"
+                                    value={newClassroomData.description}
+                                    onChange={(e) => setNewClassroomData({ ...newClassroomData, description: e.target.value })}
+                                />
+                            </div>
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCreateModal(false)}
+                                    className="px-4 py-2 text-sm font-medium text-red-700 bg-red-200 rounded-md hover:bg-red-300 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={createLoading}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-green-500 rounded-md hover:bg-green-600 transition disabled:bg-green-300"
+                                >
+                                    {createLoading ? "Creating..." : "Create"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
             <div className="max-w-7xl mx-auto">
                 <header className="mb-12">
                     <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
@@ -211,13 +309,24 @@ export default function Dashboard({ user }) {
                 </header>
                 
                 <section className="mb-12">
-                    <h2 className="text-2xl font-bold text-slate-800 mb-6">Your Classrooms</h2>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold text-slate-800">Your Classrooms</h2>
+                        {user.role === "teacher" && (
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                className="flex items-center px-4 py-2 font-semibold text-sm text-white bg-violet-700 rounded-md hover:bg-violet-600 transition shadow-lg"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                </svg>
+                                Create Classroom
+                            </button>
+                        )}
+                    </div>
                     {classrooms.length === 0 ? (
-                        <div className="text-center py-12 bg-slate-50 rounded-lg border-2 border-dashed">
-                            <h3 className="text-xl font-semibold text-slate-700">No classrooms found.</h3>
-                            <p className="text-slate-500 mt-2">
-                                {user.role === "teacher" ? "Create a new classroom to get started." : "Please wait for your teacher to enroll you."}
-                            </p>
+                        <div className="text-center p-8 border-2 border-dashed rounded-lg text-gray-400">
+                            <p>You are not currently enrolled in any classrooms.</p>
+                            {user.role === "teacher" && <p className="text-sm mt-2">Use the "Create Classroom" button to get started.</p>}
                         </div>
                     ) : (
                         <>
@@ -231,8 +340,8 @@ export default function Dashboard({ user }) {
                                         <div className="p-6 flex flex-col justify-between h-full group">
                                             <div className="cursor-pointer" onClick={() => enterClassroom(cls._id)}>
                                                 <h3 className="text-xl font-bold text-slate-800 group-hover:text-violet-600 transition-colors duration-300">{cls.name}</h3>
-                                                <p className="text-slate-500 text-sm mt-1">Taught by {cls.teacher?.name}</p>
-                                                <p className="text-slate-500 text-sm mt-2">{cls.students.length} {cls.students.length === 1 ? "student" : "students"}</p>
+                                                <p className="text-slate-500 text-sm mt-1">Taught by **{cls.teacher?.name}**</p>
+                                                <p className="text-slate-500 text-sm mt-2">{cls.students?.length || 0} {cls.students?.length === 1 ? "student" : "students"}</p>
                                             </div>
                                             {user.role === "teacher" && (
                                                 <div className="mt-6 pt-4 border-t border-slate-200 flex flex-col sm:flex-row gap-3">
