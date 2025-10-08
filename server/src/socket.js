@@ -20,6 +20,16 @@ export const setupSocket = (server) => {
   io.on("connection", (socket) => {
     console.log("⚡ New client connected:", socket.id);
 
+    //-------------------NUMBER OF STUDENTS IN CLASSES---------------------
+
+    const broadcastAllRoomCounts = () => {
+      const allCounts = Array.from(roomPeers.entries()).map(([classroomId, students]) => ({
+          classroomId: classroomId,
+          count: students.size,
+      }));
+      io.emit('update-all-counts', allCounts); // Use a new, clear event name
+      console.log("Broadcasted all room counts to dashboard clients.");
+  };
     // ------------------- CLASSROOM JOIN -------------------
     socket.on("joinClassroom", ({ classroomId, user }) => {
       if (!classroomId) return;
@@ -55,6 +65,8 @@ export const setupSocket = (server) => {
         name: socket.data.user.name,
       });
       socket.to(classroomId).emit("webrtc:peer-joined", { peerId: socket.id });
+
+      broadcastAllRoomCounts();
     });
 
     // ------------------- CHAT -------------------
@@ -82,6 +94,8 @@ export const setupSocket = (server) => {
       console.log("after", roomPeers);
       
       if(roomPeers.get(classroomId)?.size === 0) roomPeers.delete(classroomId);
+
+      broadcastAllRoomCounts();
 
       const updatedUsers = Array.from(roomPeers.get(classroomId) || []).map((id) => {
         return {
@@ -141,6 +155,8 @@ export const setupSocket = (server) => {
 
       socket.to(classroomId).emit("webrtc:peer-left", { peerId: socket.id });
       socket.to(classroomId).emit("userLeft", { userId: socket.id });
+
+      broadcastAllRoomCounts();
 
       console.log(`❌ Client ${socket.id} left classroom ${classroomId}`);
     };

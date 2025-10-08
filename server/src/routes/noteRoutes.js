@@ -6,7 +6,7 @@ import { protect } from '../middlewares/authMiddleware.js'; // ⬅️ Import you
 const router = express.Router();
 
 // This secures the route for getting notes (GET /api/notes)
-router.get('/', protect, getNotes);
+router.get('/:id', getNotes);
 
 // This secures the route for creating notes (POST /api/notes/generate)
 router.post('/generate', protect, generateNotes);

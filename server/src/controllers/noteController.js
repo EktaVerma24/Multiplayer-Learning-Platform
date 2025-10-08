@@ -108,8 +108,9 @@ Now, generate detailed written notes with optional relevant image URLs for the t
 // GET /api/notes
 export const getNotes = async (req, res) => {
     try {
+        const { id } = req.params;
         // ✅ FIX: Find only notes where 'createdBy' matches the logged-in user's ID
-        const notes = await Note.find({ createdBy: req.user._id }).sort({ createdAt: -1 });
+        const notes = await Note.find({ createdBy: id }).sort({ createdAt: -1 });
         res.json(notes);
     } catch (error) {
         res.status(500).json({ error: "Failed to fetch notes" });

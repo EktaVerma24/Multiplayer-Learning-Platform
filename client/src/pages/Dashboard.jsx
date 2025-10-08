@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSocket } from "../context/SocketContext";
 import API from "../api/axios";
 import { motion } from "framer-motion";
 
@@ -15,6 +16,7 @@ const ShowAllIcon = ({ open }) => (<svg className={`w-5 h-5 ml-2 transition-tran
 
 export default function Dashboard({ user }) {
     const navigate = useNavigate();
+    const { socket } = useSocket();
     const [classrooms, setClassrooms] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -41,7 +43,7 @@ export default function Dashboard({ user }) {
                 setLoading(true);
                 const [classroomsRes, notesRes] = await Promise.all([
                     API.get("/classrooms"),
-                    API.get("/notes")
+                    API.get(`/notes/${user._id}`)
                 ]);
                 setClassrooms(classroomsRes.data);
                 setNotes(notesRes.data);
@@ -54,6 +56,35 @@ export default function Dashboard({ user }) {
         };
         fetchInitialData();
     }, []);
+
+    useEffect(() => {
+        if (!socket) return; // Make sure socket object exists
+
+        socket.connect();
+
+        function onAllCountsUpdate(allCounts) { // The argument is the array
+            console.log("Received live counts:", allCounts);
+            
+            const countsMap = new Map(
+                allCounts.map(item => [item.classroomId, item.count])
+            );
+
+            setClassrooms(prevClassrooms => 
+                prevClassrooms.map(cls => ({
+                    ...cls,
+                    liveStudentCount: countsMap.get(cls._id) ?? cls.liveStudentCount,
+                }))
+            );
+        }
+
+        // --- 1. LISTEN FOR THE CORRECT GLOBAL EVENT ---
+        socket.on('update-all-counts', onAllCountsUpdate);
+
+        return () => {
+            socket.off('update-all-counts', onAllCountsUpdate);
+            socket.disconnect();
+        };
+    }, [socket]);
 
     // 🏆 FIX: Ensures the newly created classroom displays the teacher's name immediately.
     const handleCreateClassroom = async (e) => {
@@ -341,7 +372,7 @@ export default function Dashboard({ user }) {
                                             <div className="cursor-pointer" onClick={() => enterClassroom(cls._id)}>
                                                 <h3 className="text-xl font-bold text-slate-800 group-hover:text-violet-600 transition-colors duration-300">{cls.name}</h3>
                                                 <p className="text-slate-500 text-sm mt-1">Taught by {cls.teacher?.name}</p>
-                                                <p className="text-slate-500 text-sm mt-2">{cls.students?.length || 0} {cls.students?.length === 1 ? "student" : "students"}</p>
+                                                <p className="text-slate-500 text-sm mt-2">{cls.liveStudentCount ?? 0} {cls.liveStudentCount === 1 ? "student" : "students"}</p>
                                             </div>
                                             {user.role === "teacher" && (
                                                 <div className="mt-6 pt-4 border-t border-slate-200 flex flex-col sm:flex-row gap-3">
