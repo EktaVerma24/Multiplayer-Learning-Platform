@@ -13,12 +13,13 @@ export default function Quiz({ classroomId }) {
     const [answers, setAnswers] = useState({});
     const [submittedScore, setSubmittedScore] = useState(null);
     const [correctAnswers, setCorrectAnswers] = useState(null);
-
+    const [showAllQuizzes, setShowAllQuizzes] = useState(false);
     const [submissions, setSubmissions] = useState([]);
     const [noSubmissions, setNoSubmissions] = useState(false); // New state to handle no submissions
 
     const isStudent = user?.role === "student";
     const isTeacher = user?.role === "teacher";
+    const displayedQuizzes = showAllQuizzes ? quizzes : quizzes.slice(0, 3);
 
     // Fetch user info from backend
     useEffect(() => {
@@ -56,6 +57,7 @@ export default function Quiz({ classroomId }) {
             }
         };
         fetchQuizzes();
+
     }, [classroomId]);
 
     const submitQuiz = async () => {
@@ -140,7 +142,7 @@ export default function Quiz({ classroomId }) {
             </motion.h1>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {quizzes.map((quiz) => (
+                {displayedQuizzes.map((quiz) => (
                     <QuizCard
                         key={quiz._id}
                         quiz={quiz}
@@ -148,6 +150,17 @@ export default function Quiz({ classroomId }) {
                         userRole={user?.role}
                     />
                 ))}
+                {quizzes.length > 3 && (
+        <div className="mt-4 text-center">
+            <button
+                onClick={() => setShowAllQuizzes(!showAllQuizzes)} // Toggles the state
+                className="font-semibold text-violet-500 hover:text-violet-700 transition"
+            >
+                {/* Change the button text based on the state */}
+                {showAllQuizzes ? 'Show Less' : 'Show More'}
+            </button>
+        </div>
+    )}
             </div>
 
             <AnimatePresence>
