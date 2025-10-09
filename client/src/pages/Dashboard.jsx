@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import API from "../api/axios";
 import { motion } from "framer-motion";
+import { Delete, DeleteIcon, Trash } from "lucide-react";
+import { FaDumpster, FaRemoveFormat } from "react-icons/fa";
 
 // --- SVG Icons ---
 const QuizIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg> );
@@ -85,6 +87,22 @@ export default function Dashboard({ user }) {
             socket.disconnect();
         };
     }, [socket]);
+
+    const handleDelete = async (id) => {
+        try {
+            if(!window.confirm("Are you sure you want to delete this classroom?")){
+                return;
+            }
+            const res = await API.delete(`/classrooms/${id}`);
+            if(res){
+                const classroomsRes = await API.get("/classrooms")
+                setClassrooms(classroomsRes.data);
+            }
+        } catch (error) {
+            console.error("Failed to delete classroom", error); // Use 'error' here
+            setError("Could not delete classroom. Please try again.");
+        }
+    }
 
     // 🏆 FIX: Ensures the newly created classroom displays the teacher's name immediately.
     const handleCreateClassroom = async (e) => {
@@ -369,10 +387,22 @@ export default function Dashboard({ user }) {
                                         variants={cardVariants}
                                     >
                                         <div className="p-6 flex flex-col justify-between h-full group">
-                                            <div className="cursor-pointer" onClick={() => enterClassroom(cls._id)}>
+                                            <div className="relative cursor-pointer" onClick={() => enterClassroom(cls._id)}>
                                                 <h3 className="text-xl font-bold text-slate-800 group-hover:text-violet-600 transition-colors duration-300">{cls.name}</h3>
                                                 <p className="text-slate-500 text-sm mt-1">Taught by {cls.teacher?.name}</p>
                                                 <p className="text-slate-500 text-sm mt-2">{cls.liveStudentCount ?? 0} {cls.liveStudentCount === 1 ? "student" : "students"}</p>
+                                                {cls?.teacher?._id === user?._id && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(cls._id);
+                                                        }}
+                                                    className="absolute top-0 right-0 cursor-popinter rounded-full text-slate-400 hover:bg-red-100 hover:text-red-600 transition-colors duration-300"
+                                                    aria-label="Delete classroom"
+                                                >
+                                                    <Trash size={20} />
+                                                </button>
+                                                )}
                                             </div>
                                             {user.role === "teacher" && (
                                                 <div className="mt-6 pt-4 border-t border-slate-200 flex flex-col sm:flex-row gap-3">

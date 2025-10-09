@@ -107,3 +107,16 @@ export const banStudents = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+export const deleteClassroom = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletedClassroom = await Classroom.findByIdAndDelete(id);
+        if(!deletedClassroom){
+            return res.status(404).json({ message: `No classroom with this id: ${id}` });
+        }
+        return res.status(200).send(deletedClassroom);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+}

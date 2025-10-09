@@ -186,6 +186,8 @@ export default function ClassroomPage({ user }) {
     };
     socket.on("receiveMessage", handleReceiveMessage);
 
+    console.log("first time?");
+
     return () => {
       console.log(`Leaving classroom ${classroomId}`);
       socket.emit("leaveClassroom", { classroomId, user });
