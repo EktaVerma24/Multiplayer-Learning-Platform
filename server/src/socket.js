@@ -5,6 +5,8 @@ const canvasStates = {};
 
 // Track peers per classroom for WebRTC
 const roomPeers = new Map();
+const userInfo = new Map();
+const userIdToSocketId = new Map();
 
 export const setupSocket = (server) => {
   const io = new Server(server, {
@@ -18,6 +20,16 @@ export const setupSocket = (server) => {
   io.on("connection", (socket) => {
     console.log("⚡ New client connected:", socket.id);
 
+    //-------------------NUMBER OF STUDENTS IN CLASSES---------------------
+
+    const broadcastAllRoomCounts = () => {
+      const allCounts = Array.from(roomPeers.entries()).map(([classroomId, students]) => ({
+          classroomId: classroomId,
+          count: students.size,
+      }));
+      io.emit('update-all-counts', allCounts); // Use a new, clear event name
+      console.log("Broadcasted all room counts to dashboard clients.");
+  };
     // ------------------- CLASSROOM JOIN -------------------
     socket.on("joinClassroom", ({ classroomId, user }) => {
       if (!classroomId) return;
@@ -37,6 +49,10 @@ export const setupSocket = (server) => {
         socket.emit("canvas-state-from-server", canvasStates[classroomId]);
       }
 
+      console.log("uuser", user);
+
+      userIdToSocketId.set(user?._id, socket.id);
+
       // Send list of existing peers for WebRTC
       const peers = Array.from(roomPeers.get(classroomId)).filter(
         (id) => id !== socket.id
@@ -49,6 +65,8 @@ export const setupSocket = (server) => {
         name: socket.data.user.name,
       });
       socket.to(classroomId).emit("webrtc:peer-joined", { peerId: socket.id });
+
+      broadcastAllRoomCounts();
     });
 
     // ------------------- CHAT -------------------
@@ -59,6 +77,41 @@ export const setupSocket = (server) => {
         message,
         timestamp: new Date(),
       });
+    });
+
+    socket.on("kickUser", ({ classroomId, userId }) => {
+      if (!classroomId || !userId) return;
+      console.log("utbk", userIdToSocketId);
+      
+      const targetSocketID = userIdToSocketId.get(userId);
+      console.log("user to be kicked", targetSocketID);
+      
+      if (!targetSocketID) return;
+      console.log("before", roomPeers);
+      console.log(roomPeers.get(classroomId));
+      roomPeers.get(classroomId)?.delete(targetSocketID);
+      console.log("user kicked", targetSocketID);
+      console.log("after", roomPeers);
+      
+      if(roomPeers.get(classroomId)?.size === 0) roomPeers.delete(classroomId);
+
+      broadcastAllRoomCounts();
+
+      const updatedUsers = Array.from(roomPeers.get(classroomId) || []).map((id) => {
+        return {
+          userId: id,
+          name: "Participant",
+        };
+      });
+
+      io.to(classroomId).emit("usersInChat", { users: updatedUsers });
+      console.log("user kick hone wale ki userId", userId);
+      io.to(targetSocketID).emit("kicked", { message: "You have been kicked out by the admin.", userId: userId });
+      io.to(classroomId).emit("userKicked", { userId });
+    });
+
+    socket.on("chatPause", ({ paused }) => {
+      io.emit("chatPausedByAdmin", { paused });
     });
 
     // ------------------- WHITEBOARD -------------------
@@ -102,6 +155,8 @@ export const setupSocket = (server) => {
 
       socket.to(classroomId).emit("webrtc:peer-left", { peerId: socket.id });
       socket.to(classroomId).emit("userLeft", { userId: socket.id });
+
+      broadcastAllRoomCounts();
 
       console.log(`❌ Client ${socket.id} left classroom ${classroomId}`);
     };

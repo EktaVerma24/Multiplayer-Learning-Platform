@@ -8,11 +8,16 @@ import API from "./api/axios";
 import CreateQuiz from "./pages/CreateQuiz.jsx";
 import CreateChallenge from "./pages/CreateChallenge.jsx";
 import AttemptChallenge from "./pages/AttemptChallenge.jsx";
-import AvailableJobs from "./pages/AvailableJobs.jsx";
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const LoadingSpinner = () => (
+    <div className="flex justify-center items-center p-10">
+        <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-violet-500"></div>
+    </div>
+  );
 
   // This useEffect is the most important change
   useEffect(() => {
@@ -37,9 +42,9 @@ function App() {
   }, []);
 
   // Show a loading indicator while the session is being validated
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  
+  if (loading) return <LoadingSpinner />;
+  
 
   return (
     <Router>

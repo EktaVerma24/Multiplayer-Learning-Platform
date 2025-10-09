@@ -25,7 +25,7 @@ app.use(
     origin: 'http://localhost:5173',
     credentials: true,
     contentType: ['application/json', 'multipart/form-data'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   })
 );
 
@@ -58,3 +58,5 @@ mongoose
     console.error('❌ MongoDB connection error:', err);
     process.exit(1);
   });
+
+  

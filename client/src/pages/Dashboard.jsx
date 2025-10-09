@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useSocket } from "../context/SocketContext";
 import API from "../api/axios";
-
-// Libraries for PDF Generation
-import jsPDF from "jspdf";
-import domtoimage from "dom-to-image-more";
+import { motion } from "framer-motion";
+import { Delete, DeleteIcon, Trash } from "lucide-react";
+import { FaDumpster, FaRemoveFormat } from "react-icons/fa";
 
 // --- SVG Icons ---
 const QuizIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg> );
@@ -19,17 +18,26 @@ const ShowAllIcon = ({ open }) => (<svg className={`w-5 h-5 ml-2 transition-tran
 
 export default function Dashboard({ user }) {
     const navigate = useNavigate();
+    const { socket } = useSocket();
     const [classrooms, setClassrooms] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [notes, setNotes] = useState([]);
     const [syllabus, setSyllabus] = useState("");
     const [notesLoading, setNotesLoading] = useState(false);
-    const [downloading, setDownloading] = useState(null); 
     const [notesVisible, setNotesVisible] = useState(true);
     const [activeNoteId, setActiveNoteId] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [showAllClassrooms, setShowAllClassrooms] = useState(false);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [newClassroomData, setNewClassroomData] = useState({ name: "", description: "" });
+    const [createLoading, setCreateLoading] = useState(false);
+
+    const LoadingSpinner = () => (
+        <div className="h-screen flex justify-center items-center p-10">
+            <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-violet-500"></div>
+        </div>
+    );
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -37,7 +45,7 @@ export default function Dashboard({ user }) {
                 setLoading(true);
                 const [classroomsRes, notesRes] = await Promise.all([
                     API.get("/classrooms"),
-                    API.get("/notes")
+                    API.get(`/notes/${user._id}`)
                 ]);
                 setClassrooms(classroomsRes.data);
                 setNotes(notesRes.data);
@@ -50,6 +58,103 @@ export default function Dashboard({ user }) {
         };
         fetchInitialData();
     }, []);
+
+    useEffect(() => {
+        if (!socket) return; // Make sure socket object exists
+
+        socket.connect();
+
+        function onAllCountsUpdate(allCounts) { // The argument is the array
+            console.log("Received live counts:", allCounts);
+            
+            const countsMap = new Map(
+                allCounts.map(item => [item.classroomId, item.count])
+            );
+
+            setClassrooms(prevClassrooms => 
+                prevClassrooms.map(cls => ({
+                    ...cls,
+                    liveStudentCount: countsMap.get(cls._id) ?? cls.liveStudentCount,
+                }))
+            );
+        }
+
+        // --- 1. LISTEN FOR THE CORRECT GLOBAL EVENT ---
+        socket.on('update-all-counts', onAllCountsUpdate);
+
+        return () => {
+            socket.off('update-all-counts', onAllCountsUpdate);
+            socket.disconnect();
+        };
+    }, [socket]);
+
+    const handleDelete = async (id) => {
+        try {
+            if(!window.confirm("Are you sure you want to delete this classroom?")){
+                return;
+            }
+            const res = await API.delete(`/classrooms/${id}`);
+            if(res){
+                const classroomsRes = await API.get("/classrooms")
+                setClassrooms(classroomsRes.data);
+            }
+        } catch (error) {
+            console.error("Failed to delete classroom", error); // Use 'error' here
+            setError("Could not delete classroom. Please try again.");
+        }
+    }
+
+    // 🏆 FIX: Ensures the newly created classroom displays the teacher's name immediately.
+    const handleCreateClassroom = async (e) => {
+        e.preventDefault();
+        setCreateLoading(true);
+
+        // 1. CONSTRUCT THE CORRECT PAYLOAD (Creator ID sent to server)
+        const payload = { 
+            ...newClassroomData, 
+            creatorId: user._id // Sends the creator ID, which your server needs
+        };
+
+        console.log("Sending Classroom Payload:", payload);
+        
+        try{
+            const res = await API.post("/classrooms", payload);
+            
+            // --- NEW CLIENT-SIDE LOGIC ---
+            // The server might return the classroom with a populated 'teacher' field, 
+            // but if it only returns the ID, this ensures the UI updates instantly.
+            const createdClassroom = res.data;
+            if (!createdClassroom.teacher) {
+                // If the server didn't populate the 'teacher' field, manually add the current user's info
+                createdClassroom.teacher = {
+                    _id: user._id,
+                    name: user.name, // Assuming 'user.name' holds the teacher's name
+                };
+            }
+            createdClassroom.students = createdClassroom.students || []; // Ensure students array exists
+
+            setClassrooms([createdClassroom, ...classrooms]);
+            // --- END NEW LOGIC ---
+
+            setNewClassroomData({ name: "", description: "" });
+            setShowCreateModal(false);
+            alert(`Classroom "${res.data.name}" created successfully!`);
+        } catch (err) {
+            console.error("Failed to create classroom:", err);
+            
+            const serverErrorMessage = 
+                err.response?.data?.error || 
+                err.response?.data?.message || 
+                (err.response?.data ? JSON.stringify(err.response.data) : 'Unknown server validation error.');
+
+            console.error("Server Error Message (400 Bad Request):", serverErrorMessage);
+
+            alert(`Error creating classroom: ${serverErrorMessage}`);
+        } finally {
+            setCreateLoading(false);
+        }
+    };
+
 
     const handleGenerateNotes = async () => {
         if (!syllabus.trim()) return alert("Enter a syllabus or topic first.");
@@ -73,44 +178,71 @@ export default function Dashboard({ user }) {
         setActiveNoteId(prevId => (prevId === noteId ? null : noteId));
     };
 
-    const handleDownloadPDF = async (note) => {
-    const noteContent = document.getElementById(`note-content-${note._id}`);
-    if (!noteContent) return;
+    // --- Final, Robust Iframe-based PDF Download Function ---
+    const handleDownloadPDF = (noteId) => {
+        const noteToPrint = document.getElementById(`note-card-${noteId}`);
+        if (!noteToPrint) {
+            console.error("Printable element not found!");
+            return;
+        }
 
-    setDownloading(note._id);
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
 
-    try {
-        // Generate PNG using dom-to-image-more
-        const dataUrl = await domtoimage.toPng(noteContent, { bgcolor: "#ffffff", quality: 1 });
-
-        const img = new Image();
-        img.src = dataUrl;
-
-        img.onload = () => {
-            const pdf = new jsPDF("p", "mm", "a4");
-            const { width: pdfWidth, height: pdfHeight } = pdf.internal.pageSize;
-
-            const ratio = img.width / img.height;
-            let imageWidth = pdfWidth - 20;
-            let imageHeight = imageWidth / ratio;
-
-            if (imageHeight > pdfHeight - 20) {
-                imageHeight = pdfHeight - 20;
-                imageWidth = imageHeight * ratio;
+        const printDocument = iframe.contentWindow.document;
+        
+        // Copy all stylesheets from the main page to the iframe
+        const stylesheets = Array.from(document.styleSheets);
+        stylesheets.forEach(stylesheet => {
+            if (stylesheet.href) { // For external stylesheets
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = stylesheet.href;
+                printDocument.head.appendChild(link);
+            } else if (stylesheet.cssRules) { // For inline <style> tags
+                const style = document.createElement('style');
+                style.textContent = Array.from(stylesheet.cssRules).map(rule => rule.cssText).join('\n');
+                printDocument.head.appendChild(style);
             }
+        });
 
-            pdf.setFontSize(16);
-            pdf.text(note.syllabus, 10, 15);
-            pdf.addImage(dataUrl, "PNG", 10, 25, imageWidth, imageHeight);
-            pdf.save(`${note.syllabus.replace(/\s+/g, "_") || "note"}.pdf`);
-        };
-    } catch (error) {
-        console.error("Failed to generate PDF:", error);
-        alert("Could not create PDF. Please try again.");
-    } finally {
-        setDownloading(null);
-    }
-};
+        // Copy the note's HTML into the iframe, with print-specific styling
+        printDocument.body.innerHTML = `
+            <div style="padding: 20mm 15mm;">
+                ${noteToPrint.innerHTML}
+            </div>
+        `;
+        
+        const noteHeader = printDocument.querySelector('.note-header');
+        if (noteHeader) {
+            noteHeader.style.display = 'none';
+        }
+        
+        // Wait for all images inside the iframe to load before printing
+        const images = printDocument.getElementsByTagName('img');
+        const promises = Array.from(images).map(img => {
+            if (img.complete) return Promise.resolve();
+            return new Promise(resolve => {
+                img.onload = resolve;
+                img.onerror = resolve; // Resolve even if an image fails to load
+            });
+        });
+
+        Promise.all(promises).then(() => {
+            setTimeout(() => {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+                
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                }, 1000);
+            }, 200);
+        });
+    };
     
     const filteredNotes = notes.filter(note =>
         note.syllabus.toLowerCase().includes(searchTerm.toLowerCase())
@@ -118,7 +250,23 @@ export default function Dashboard({ user }) {
 
     const displayedClassrooms = showAllClassrooms ? classrooms : classrooms.slice(0, 3);
     
-    const enterClassroom = (id) => navigate(`/classroom/${id}`);
+    // const enterClassroom = (id) => navigate(`/classroom/${id}`);
+    const enterClassroom = (id) => {
+        const classroom = classrooms.find(cls => cls._id === id);
+        console.log("classroom", classroom);
+        console.log(user._id);
+        console.log(classroom.bannedUsers);
+        
+        if (classroom) {
+        const isBanned = classroom.bannedUsers?.some(banEntry => banEntry.userId.toString() === user._id.toString());
+        if (isBanned) { 
+            alert("You have been banned from this classroom.");
+            return;
+        } else {
+            navigate(`/classroom/${id}`);
+        }
+    }
+    };
 
     const goToCreateQuiz = async (id) => {
         try {
@@ -151,11 +299,54 @@ export default function Dashboard({ user }) {
     const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
     const cardVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
 
-    if (loading) { return ( <div className="flex justify-center items-center h-screen bg-gray-50"><p>Loading dashboard...</p></div> ); }
+    if (loading) return <LoadingSpinner />; 
     if (error) { return ( <div className="flex justify-center items-center h-screen bg-gray-50"><p className="p-6 bg-red-100 text-red-700 rounded-lg">{error}</p></div> ); }
 
     return (
         <div className="min-h-screen bg-white text-slate-800 p-6 sm:p-8">
+            {showCreateModal && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+                        <h3 className="text-xl font-bold mb-4">Create New Classroom</h3>
+                        <form onSubmit={handleCreateClassroom}>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700">Classroom Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-violet-500 focus:border-violet-500"
+                                    value={newClassroomData.name}
+                                    onChange={(e) => setNewClassroomData({ ...newClassroomData, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700">Description</label>
+                                <textarea
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-violet-500 focus:border-violet-500"
+                                    value={newClassroomData.description}
+                                    onChange={(e) => setNewClassroomData({ ...newClassroomData, description: e.target.value })}
+                                />
+                            </div>
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCreateModal(false)}
+                                    className="px-4 py-2 text-sm font-medium text-red-700 bg-red-200 rounded-md hover:bg-red-300 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={createLoading}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-green-500 rounded-md hover:bg-green-600 transition disabled:bg-green-300"
+                                >
+                                    {createLoading ? "Creating..." : "Create"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
             <div className="max-w-7xl mx-auto">
                 <header className="mb-12">
                     <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
@@ -167,13 +358,24 @@ export default function Dashboard({ user }) {
                 </header>
                 
                 <section className="mb-12">
-                    <h2 className="text-2xl font-bold text-slate-800 mb-6">Your Classrooms</h2>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold text-slate-800">Your Classrooms</h2>
+                        {user.role === "teacher" && (
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                className="flex items-center px-4 py-2 font-semibold text-sm text-white bg-violet-700 rounded-md hover:bg-violet-600 transition shadow-lg"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                </svg>
+                                Create Classroom
+                            </button>
+                        )}
+                    </div>
                     {classrooms.length === 0 ? (
-                        <div className="text-center py-12 bg-slate-50 rounded-lg border-2 border-dashed">
-                            <h3 className="text-xl font-semibold text-slate-700">No classrooms found.</h3>
-                            <p className="text-slate-500 mt-2">
-                                {user.role === "teacher" ? "Create a new classroom to get started." : "Please wait for your teacher to enroll you."}
-                            </p>
+                        <div className="text-center p-8 border-2 border-dashed rounded-lg text-gray-400">
+                            <p>You are not currently enrolled in any classrooms.</p>
+                            {user.role === "teacher" && <p className="text-sm mt-2">Use the "Create Classroom" button to get started.</p>}
                         </div>
                     ) : (
                         <>
@@ -185,10 +387,22 @@ export default function Dashboard({ user }) {
                                         variants={cardVariants}
                                     >
                                         <div className="p-6 flex flex-col justify-between h-full group">
-                                            <div className="cursor-pointer" onClick={() => enterClassroom(cls._id)}>
+                                            <div className="relative cursor-pointer" onClick={() => enterClassroom(cls._id)}>
                                                 <h3 className="text-xl font-bold text-slate-800 group-hover:text-violet-600 transition-colors duration-300">{cls.name}</h3>
                                                 <p className="text-slate-500 text-sm mt-1">Taught by {cls.teacher?.name}</p>
-                                                <p className="text-slate-500 text-sm mt-2">{cls.students.length} {cls.students.length === 1 ? "student" : "students"}</p>
+                                                <p className="text-slate-500 text-sm mt-2">{cls.liveStudentCount ?? 0} {cls.liveStudentCount === 1 ? "student" : "students"}</p>
+                                                {cls?.teacher?._id === user?._id && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(cls._id);
+                                                        }}
+                                                    className="absolute top-0 right-0 cursor-popinter rounded-full text-slate-400 hover:bg-red-100 hover:text-red-600 transition-colors duration-300"
+                                                    aria-label="Delete classroom"
+                                                >
+                                                    <Trash size={20} />
+                                                </button>
+                                                )}
                                             </div>
                                             {user.role === "teacher" && (
                                                 <div className="mt-6 pt-4 border-t border-slate-200 flex flex-col sm:flex-row gap-3">
@@ -223,7 +437,9 @@ export default function Dashboard({ user }) {
                 <section className="p-6 bg-slate-50 border border-slate-200 rounded-xl">
                     <div className="flex items-center mb-4">
                         <span className="p-2 bg-violet-100 text-violet-600 rounded-lg mr-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.707.707M12 21v-1m-4.636-1.636l.707-.707" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.562L16.25 22.5l-.648-1.938a3.375 3.375 0 00-2.456-2.456L11.25 18l1.938-.648a3.375 3.375 0 002.456-2.456L16.25 13.5l.648 1.938a3.375 3.375 0 002.456 2.456L21 18l-1.938.648a3.375 3.375 0 00-2.456 2.456z" />
+                            </svg>
                         </span>
                         <h2 className="text-2xl font-bold text-gray-800">AI Notes Generator</h2>
                     </div>
@@ -268,24 +484,23 @@ export default function Dashboard({ user }) {
                                 <div className="space-y-3 max-h-96 overflow-y-auto p-1">
                                     {filteredNotes.length > 0 ? (
                                         filteredNotes.map((note) => (
-                                            <div key={note._id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                                                <div onClick={() => handleNoteToggle(note._id)} className="p-4 cursor-pointer flex justify-between items-center hover:bg-slate-50 transition">
+                                            <div key={note._id} id={`note-card-${note._id}`} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                                                <div onClick={() => handleNoteToggle(note._id)} className="note-header p-4 cursor-pointer flex justify-between items-center hover:bg-slate-50 transition">
                                                     <h4 className="font-semibold text-violet-600">{note.syllabus}</h4>
                                                     <button 
-                                                        onClick={(e) => { e.stopPropagation(); handleDownloadPDF(note); }}
-                                                        disabled={downloading === note._id}
-                                                        className="bg-slate-200 text-slate-600 text-xs px-3 py-1 rounded-full font-medium hover:bg-slate-300 transition disabled:opacity-50"
+                                                        onClick={(e) => { e.stopPropagation(); handleDownloadPDF(note._id); }}
+                                                        className="bg-slate-200 text-slate-600 text-xs px-3 py-1 rounded-full font-medium hover:bg-slate-300 transition"
                                                     >
-                                                        {downloading === note._id ? "..." : "PDF"}
+                                                        PDF
                                                     </button>
                                                 </div>
                                                 {activeNoteId === note._id && (
-                                                    <div id={`note-content-${note._id}`} className="p-4 border-t border-gray-200 bg-white">
+                                                    <div id={`note-content-${note._id}`} className="note-content-area p-4 border-t border-gray-200 bg-white">
                                                         {note.sections?.map((section, i) => (
                                                             <div key={i} className="mb-4 last:mb-0">
                                                                 <h5 className="font-bold text-gray-800 text-md">{section.title}</h5>
                                                                 {section.imageUrl && (
-                                                                    <img src={`image-proxy?url=${encodeURIComponent(section.imageUrl)}`} alt={section.title} className="my-2 max-w-sm h-auto rounded-md border" />
+                                                                    <img src={`http://localhost:5000/image-proxy?url=${encodeURIComponent(section.imageUrl)}`} alt={section.title} className="my-2 max-w-sm h-auto rounded-md border" />
                                                                 )}
                                                                 <p className="text-sm text-gray-600 whitespace-pre-wrap mt-1">{section.content}</p>
                                                             </div>

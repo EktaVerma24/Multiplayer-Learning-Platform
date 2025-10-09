@@ -25,7 +25,11 @@ const TrashIcon = () => (
 
 const FaHome = () => <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 576 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M280.37 148.26L96 300.11V464a16 16 0 0 0 16 16l112.06-.29a16 16 0 0 0 15.94-16V368a16 16 0 0 1 16-16h64a16 16 0 0 1 16 16v95.64a16 16 0 0 0 16 16.05L464 480a16 16 0 0 0 16-16V300.11L295.63 148.26a12.19 12.19 0 0 0-15.26 0zM571.6 251.47L488 182.58V44.05a12 12 0 0 0-12-12h-40a12 12 0 0 0-12 12v72.61L318.47 43a48 48 0 0 0-61 0L4.34 251.47a12 12 0 0 0-1.6 16.9l25.5 31A12 12 0 0 0 45.15 301l225.1-187.37a12 12 0 0 1 15.5 0L530.9 301a12 12 0 0 0 16.9-1.6l25.5-31a12 12 0 0 0-1.7-16.93z"></path></svg>;
 
-
+const LoadingSpinner = () => (
+  <div className="h-screen flex justify-center items-center p-10">
+    <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-violet-500"></div>
+  </div>
+);
 
 export default function CreateQuiz({ user }) {
   const { id: classroomId } = useParams();
@@ -35,6 +39,7 @@ export default function CreateQuiz({ user }) {
   const [questions, setQuestions] = useState([
     { question: "", options: ["", "", "", ""], correctOption: 0 },
   ]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!classroomId) {
@@ -130,6 +135,7 @@ export default function CreateQuiz({ user }) {
     }
   };
 
+  if(loading) return <LoadingSpinner />;
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">

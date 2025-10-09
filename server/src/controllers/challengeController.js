@@ -163,6 +163,8 @@ export const getChallengeById = async (req, res) => {
 
 export const runCode = async (req, res) => {
   try {
+
+    console.log("RAPIDAPI_KEY from env:", process.env.RAPIDAPI_KEY);
     const { code: userCode, language, input, challengeId } = req.body;
 
     const normalizedInput = input.replace(/\\n/g, "\n");
