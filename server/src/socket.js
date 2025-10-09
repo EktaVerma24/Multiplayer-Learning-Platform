@@ -1,5 +1,5 @@
 import { Server } from "socket.io";
-
+import Message from "./models/Message.js";
 // Store the latest canvas state for each room
 const canvasStates = {};
 
@@ -70,14 +70,32 @@ export const setupSocket = (server) => {
     });
 
     // ------------------- CHAT -------------------
-    socket.on("sendMessage", ({ classroomId, message, user }) => {
-      if (!classroomId || !message) return;
-      socket.to(classroomId).emit("receiveMessage", {
-        user: user || socket.data.user,
-        message,
-        timestamp: new Date(),
-      });
-    });
+      socket.on("sendMessage", async ({ classroomId, message, user }) => {
+//       if (!classroomId || !message || !user?._id) return;
+
+      try {
+        // 1. Save the message to the database
+        const newMessage = await Message.create({
+          classroomId: classroomId,
+          message: message,
+          user: user._id, // Use the user's ID to link the message
+        });
+        await newMessage.save();
+
+        // 2. Populate the user data (name) from the User model for broadcasting
+        //    This ensures the message object sent to the client is complete.
+        //    NOTE: The exact fields ('name', '_id') must match what your frontend expects.
+        await newMessage.populate('user', 'name _id'); 
+        
+        // 3. Broadcast the saved, complete message object to everyone in the room
+        io.to(classroomId).emit("receiveMessage", newMessage);
+        
+      } catch (error) {
+        console.error("Error saving or broadcasting message:", error);
+        // Optional: Send error message back to the sender
+        socket.emit("chatError", { message: "Failed to send message." });
+      }
+    });
 
     socket.on("kickUser", ({ classroomId, userId }) => {
       if (!classroomId || !userId) return;

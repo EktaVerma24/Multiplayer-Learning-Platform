@@ -11,60 +11,60 @@ import VideoCall from "./VideoCall.jsx";
 
 // --- Helper Component for Kick Functionality ---
 const UserAvatarWithKick = ({ user, onKick, isAdmin }) => {
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const menuRef = useRef(null);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const menuRef = useRef(null);
 
-    // Effect to close menu when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (menuRef.current && !menuRef.current.contains(event.target)) {
-                setIsMenuOpen(false);
-            }
-        };
+    // Effect to close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setIsMenuOpen(false);
+            }
+        };
 
-        if (isMenuOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
+        if (isMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
 
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isMenuOpen]);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isMenuOpen]);
 
-    const handleKickClick = () => {
-        onKick(user); // Pass the whole user object
-        setIsMenuOpen(false);
-    };
+    const handleKickClick = () => {
+        onKick(user); // Pass the whole user object
+        setIsMenuOpen(false);
+    };
 
-    return (
-        <div ref={menuRef} className="relative">
-            <div
-                className="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center font-bold text-slate-600 text-sm flex-shrink-0 cursor-pointer"
-                onClick={() => isAdmin && setIsMenuOpen(prev => !prev)}
-            >
-                {user.name?.charAt(0).toUpperCase()}
-            </div>
+    return (
+        <div ref={menuRef} className="relative">
+            <div
+                className="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center font-bold text-slate-600 text-sm flex-shrink-0 cursor-pointer"
+                onClick={() => isAdmin && setIsMenuOpen(prev => !prev)}
+            >
+                {user.name?.charAt(0).toUpperCase()}
+            </div>
 
-            {isMenuOpen && isAdmin && (
-                <div className="absolute top-10 -left-4 w-40 bg-white border border-slate-200 rounded-md shadow-lg z-10">
-                    <ul>
-                        <li>
-                            <button
-                                onClick={handleKickClick}
-                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-slate-50 font-medium"
-                            >
-                                Kick {user.name}
-                            </button>
-                        </li>
-                    </ul>
-                </div>
-            )}
-        </div>
-    );
+            {isMenuOpen && isAdmin && (
+                <div className="absolute top-10 -left-4 w-40 bg-white border border-slate-200 rounded-md shadow-lg z-10">
+                    <ul>
+                        <li>
+                            <button
+                                onClick={handleKickClick}
+                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-slate-50 font-medium"
+                            >
+                                Kick {user.name}
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
 };
 
 
-// --- Icons ---
+// --- Icons (Omitting for brevity, assume they are correct) ---
 const ChatIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -150,7 +150,7 @@ export default function ClassroomPage({ user }) {
   );
 
   useEffect(() => {
-    // Check if the current user is the teacher of the classroom
+    // Check if the current user is the teacher of the classroom
     if(user?._id && classroom?.teacher?._id && user._id === classroom.teacher._id){
       setAdminChatAccess(true);
     }
@@ -174,6 +174,29 @@ export default function ClassroomPage({ user }) {
     return () => socket.off("kicked");
   }, [socket, navigate, user]);
 
+// ------------------------------------------------------------------
+// ⭐ NEW: Fetch historical chat messages on mount
+// ------------------------------------------------------------------
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        // Assuming backend GET endpoint: /messages/:classroomId
+        // This fetches the chat history using a REST API call
+        const res = await API.get(`/messages/${classroomId}`); 
+        // The response data should be an array of messages with the 'user' field populated.
+        setMessages(res.data); 
+      } catch (err) {
+        console.error("Failed to fetch messages:", err);
+      }
+    };
+
+    if (classroomId) {
+      fetchMessages();
+    }
+  }, [classroomId]); 
+// ------------------------------------------------------------------
+
+
   // join + leave socket rooms
   useEffect(() => {
     if (!socket || !user) return;
@@ -182,11 +205,12 @@ export default function ClassroomPage({ user }) {
     console.log(`Attempting to join classroom: ${classroomId}`);
 
     const handleReceiveMessage = (message) => {
+      // This handles new messages from the socket, adding them to the existing state
       setMessages((prev) => [...prev, message]);
     };
     socket.on("receiveMessage", handleReceiveMessage);
 
-    console.log("first time?");
+    console.log("first time?");
 
     return () => {
       console.log(`Leaving classroom ${classroomId}`);
@@ -201,26 +225,26 @@ export default function ClassroomPage({ user }) {
       return !prev;
     });
   }
- 
-  // --- MODIFIED: Direct function to handle kicking a user ---
-  const handleKickUser = async (userToKick) => {
-    if (!adminChatAccess || !userToKick) return;
+ 
+  // --- MODIFIED: Direct function to handle kicking a user ---
+  const handleKickUser = async (userToKick) => {
+    if (!adminChatAccess || !userToKick) return;
 
-    try {
-        console.log(`Admin ${user.name} is kicking user: ${userToKick.name}`);
-        
-        // 1. Emit socket event to remove user from chat in real-time
-        socket.emit("kickUser", { classroomId, userId: userToKick._id });
+    try {
+        console.log(`Admin ${user.name} is kicking user: ${userToKick.name}`);
+        
+        // 1. Emit socket event to remove user from chat in real-time
+        socket.emit("kickUser", { classroomId, userId: userToKick._id });
 
-        // 2. Call API to ban user from the classroom permanently
-        await API.patch(`/classrooms/ban/${classroomId}`, { userId: userToKick._id });
-        
-        console.log(`User ${userToKick.name} has been kicked and banned.`);
+        // 2. Call API to ban user from the classroom permanently
+        await API.patch(`/classrooms/ban/${classroomId}`, { userId: userToKick._id });
+        
+        console.log(`User ${userToKick.name} has been kicked and banned.`);
 
-    } catch (err) {
-        console.error("Failed to kick/ban user:", err);
-    }
-  };
+    } catch (err) {
+        console.error("Failed to kick/ban user:", err);
+    }
+  };
 
 
   useEffect(() => {
@@ -246,19 +270,32 @@ export default function ClassroomPage({ user }) {
     getClassroom();
   }, [classroomId]);
 
-  const sendMessage = (e) => {
+// ------------------------------------------------------------------
+// ⭐ MODIFIED: Removed the unnecessary API.post call to fix the 404 error
+// ------------------------------------------------------------------
+  const sendMessage = (e) => { // Changed back to synchronous, as only socket.emit is used
     e.preventDefault();
-    if (!input.trim() || !socket) return;
+    if (!input.trim() || !socket || !user?._id || paused) return;
 
-    const messageData = {
-      user,
-      message: input,
-      timestamp: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, messageData]);
-    socket.emit("sendMessage", { classroomId, message: input, user });
+    const messageContent = input.trim();
+    
+    // 1. Emit socket event for real-time delivery and server-side saving.
+    // The server will save it to the DB and then broadcast it back via 'receiveMessage'.
+    socket.emit("sendMessage", { 
+        classroomId, 
+        message: messageContent, 
+        user // Pass the full user object for the server to reference _id and display name
+    });
+    
+    // 2. Clear the input field immediately
     setInput("");
+
+    // NOTE: The message is added to state ONLY when 'receiveMessage' is triggered 
+    // by the server (in the useEffect hook), ensuring messages are synchronized 
+    // and include the database-generated ID/timestamp.
+
   };
+// ------------------------------------------------------------------
 
   if (loading) return <LoadingSpinner />;
 
@@ -318,33 +355,38 @@ export default function ClassroomPage({ user }) {
                 {messages.length === 0 && (
                   <p className="text-slate-400">No messages yet. Start the conversation!</p>
                 )}
-                {messages.map((msg, index) => { // Added index for a more stable key
+                {messages.map((msg, index) => { 
                   if (!msg || !msg.user) return null;
+                  
                   const isCurrentUser = msg.user._id === user?._id;
+                  
+                  // Fallback for key if timestamp or index is missing (unlikely with DB timestamp)
+                  const messageKey = `${msg._id || msg.timestamp}-${index}`;
+
                   return (
                     <div
-                      key={`${msg.timestamp}-${index}`} // Using a more robust key
+                      key={messageKey} 
                       className={`flex items-end gap-2 ${
                         isCurrentUser ? "justify-end" : "justify-start"
                       }`}
                     >
                       {!isCurrentUser && (
-                            // --- MODIFIED: Replaced div with the component ---
-                            <UserAvatarWithKick 
-                                user={msg.user}
-                                onKick={handleKickUser}
-                                isAdmin={adminChatAccess}
-                            />
+                            <UserAvatarWithKick 
+                                user={msg.user}
+                                onKick={handleKickUser}
+                                isAdmin={adminChatAccess}
+                            />
                       )}
                       <div
-                        className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl ${
+                        className={`max-w-xs md:max-w-md lg:max-lg px-4 py-2 rounded-2xl ${
                           isCurrentUser
                             ? "bg-violet-600 text-white rounded-br-none"
                             : "bg-slate-200 text-slate-800 rounded-bl-none"
                         }`}
                       >
                         {!isCurrentUser && (
-                          <p className="text-xs font-bold text-violet-600 mb-1">{msg.user.name}</p>
+                          // Ensure msg.user.name is available
+                          <p className="text-xs font-bold text-violet-600 mb-1">{msg.user?.name}</p>
                         )}
                         <p>{msg.message}</p>
                       </div>
