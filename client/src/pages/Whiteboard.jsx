@@ -26,6 +26,8 @@ export default function Whiteboard({ classroomId, user }) {
   const { socket } = useSocket();
   const canvasRef = useRef(null);
   const fabricRef = useRef(null);
+
+  const isTeacher = user?.role === 'teacher';
   
   const [tool, setTool] = useState("pencil");
   const [color, setColor] = useState("#000000");
@@ -51,12 +53,14 @@ export default function Whiteboard({ classroomId, user }) {
   useEffect(() => { brushSizeRef.current = brushSize; }, [brushSize]);
 
   const emitState = useCallback(debounce((state) => {
+    if(!isTeacher) return;
     if (socket) {
         socket.emit("canvas-state", { classroomId, state });
     }
   }, 300), [socket, classroomId]);
 
   const saveState = useCallback(() => {
+    if(!isTeacher) return;
     if (isRemoteUpdate.current || !fabricRef.current) return;
     const currentState = fabricRef.current.toObject();
     const newHistory = history.slice(0, historyIndex + 1);
@@ -94,6 +98,7 @@ export default function Whiteboard({ classroomId, user }) {
     });
 
     const handleMouseDown = (o) => {
+      if (!isTeacher) return;
       const pointer = canvas.getPointer(o.e);
       startPoint.current = pointer;
       const currentTool = toolRef.current;
@@ -122,6 +127,7 @@ export default function Whiteboard({ classroomId, user }) {
     };
 
     const handleMouseMove = (o) => {
+      if (!isTeacher) return;
       if (!isDrawingShape.current || !shapeRef.current) return;
       const pointer = canvas.getPointer(o.e);
       const { x: startX, y: startY } = startPoint.current;
@@ -137,6 +143,7 @@ export default function Whiteboard({ classroomId, user }) {
     };
 
     const handleMouseUp = () => {
+      if (!isTeacher) return;
       isDrawingShape.current = false;
       saveStateRef.current();
     };
@@ -157,6 +164,7 @@ export default function Whiteboard({ classroomId, user }) {
 // 2. Add the new handler function for summarization
 // Replace your existing handleSummarize function with this one.
 const handleSummarize = async () => {
+  if (!isTeacher) return;
   if (!fabricRef.current) return;
 
   setIsSummarizing(true);
@@ -186,12 +194,14 @@ const handleSummarize = async () => {
     const canvas = fabricRef.current;
     if (!canvas) return;
     
-    canvas.isDrawingMode = tool === 'pencil';
-    canvas.selection = tool === 'select';
-    
+    const isEditing = isTeacher && ['pencil', 'eraser', 'text', 'rect', 'circle'].includes(tool);
+
+    canvas.isDrawingMode = isTeacher && tool === 'pencil';
+    canvas.selection = isTeacher && tool === 'select';
+
     canvas.forEachObject(obj => {
-      obj.selectable = tool === 'select';
-      obj.evented = true; 
+      obj.selectable = isTeacher && tool === 'select';
+      obj.evented = isTeacher;
     });
     
     if (tool === 'pencil') {
@@ -201,22 +211,27 @@ const handleSummarize = async () => {
     }
 
     if (tool === 'select') {
-      canvas.defaultCursor = 'default';
-      canvas.hoverCursor = 'move';
+      canvas.defaultCursor = isTeacher ? 'default' : 'not-allowed';
+      canvas.hoverCursor = isTeacher ? 'move' : 'not-allowed';
     } else if (tool === 'eraser') {
-      canvas.defaultCursor = eraserCursor;
-      canvas.hoverCursor = eraserCursor;
-    } else {
+      canvas.defaultCursor = isTeacher ? eraserCursor : 'not-allowed';
+      canvas.hoverCursor = isTeacher ? eraserCursor : 'not-allowed';
+    } else if (isEditing) {
       canvas.defaultCursor = 'crosshair';
       canvas.hoverCursor = 'crosshair';
     }
-  }, [tool, color, brushSize]);
+    else{
+      canvas.defaultCursor = 'default';
+      canvas.hoverCursor = 'default';
+    }
+  }, [tool, color, brushSize, isTeacher]);
 
-  const handleUndo = () => { if (historyIndex > 0) { isRemoteUpdate.current = true; const newIndex = historyIndex - 1; setHistoryIndex(newIndex); fabricRef.current.loadFromJSON(history[newIndex], () => { fabricRef.current.renderAll(); emitState(history[newIndex]); isRemoteUpdate.current = false; }); } };
-  const handleRedo = () => { if (historyIndex < history.length - 1) { isRemoteUpdate.current = true; const newIndex = historyIndex + 1; setHistoryIndex(newIndex); fabricRef.current.loadFromJSON(history[newIndex], () => { fabricRef.current.renderAll(); emitState(history[newIndex]); isRemoteUpdate.current = false; }); } };
-  const handleClear = () => { fabricRef.current.clear(); saveState(); };
-  const handleDownload = () => { const dataURL = fabricRef.current.toDataURL({ format: 'png' }); const link = document.createElement('a'); link.href = dataURL; link.download = `whiteboard-${classroomId}.png`; link.click(); };
+  const handleUndo = () => { if (!isTeacher) return; if (historyIndex > 0) { isRemoteUpdate.current = true; const newIndex = historyIndex - 1; setHistoryIndex(newIndex); fabricRef.current.loadFromJSON(history[newIndex], () => { fabricRef.current.renderAll(); emitState(history[newIndex]); isRemoteUpdate.current = false; }); } };
+  const handleRedo = () => { if (!isTeacher) return; if (historyIndex < history.length - 1) { isRemoteUpdate.current = true; const newIndex = historyIndex + 1; setHistoryIndex(newIndex); fabricRef.current.loadFromJSON(history[newIndex], () => { fabricRef.current.renderAll(); emitState(history[newIndex]); isRemoteUpdate.current = false; }); } };
+  const handleClear = () => { if (!isTeacher) return; fabricRef.current.clear(); saveState(); };
+  const handleDownload = () => { if (!isTeacher) return; const dataURL = fabricRef.current.toDataURL({ format: 'png' }); const link = document.createElement('a'); link.href = dataURL; link.download = `whiteboard-${classroomId}.png`; link.click(); };
   const handleImportImage = (e) => {
+    if (!isTeacher) return;
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -245,10 +260,12 @@ const handleSummarize = async () => {
             <button
               key={toolName}
               onClick={() => setTool(toolName)}
+              disabled={!isTeacher}
               className={`group relative p-2 rounded-full transition-all duration-200 border-2
                 ${tool === toolName
                   ? "bg-violet-100 border-violet-500 shadow"
                   : "bg-white border-transparent hover:bg-slate-100"}
+                ${!isTeacher ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
               `}
               title={toolName.charAt(0).toUpperCase() + toolName.slice(1)}
             >
@@ -267,6 +284,7 @@ const handleSummarize = async () => {
             type="color"
             value={color}
             onChange={(e) => setColor(e.target.value)}
+            disabled={!isTeacher}
             className="w-8 h-8 rounded-full border-2 border-gray-300 shadow cursor-pointer"
             title="Brush Color"
           />
@@ -276,6 +294,7 @@ const handleSummarize = async () => {
             max="50"
             value={brushSize}
             onChange={(e) => setBrushSize(parseInt(e.target.value, 10))}
+            disabled={!isTeacher}
             className="w-24 accent-violet-500"
             title="Brush Size"
           />
@@ -286,7 +305,7 @@ const handleSummarize = async () => {
         <div className="flex gap-1">
           <button
             onClick={handleUndo}
-            disabled={historyIndex <= 0}
+            disabled={!isTeacher || historyIndex <= 0}
             className="p-2 rounded-full bg-white border-2 border-transparent hover:bg-slate-100 disabled:opacity-50"
             title="Undo"
           >
@@ -294,7 +313,7 @@ const handleSummarize = async () => {
           </button>
           <button
             onClick={handleRedo}
-            disabled={historyIndex >= history.length - 1}
+            disabled={!isTeacher || historyIndex >= history.length - 1}
             className="p-2 rounded-full bg-white border-2 border-transparent hover:bg-slate-100 disabled:opacity-50"
             title="Redo"
           >
@@ -302,6 +321,7 @@ const handleSummarize = async () => {
           </button>
           <button
             onClick={handleClear}
+            disabled={!isTeacher}
             className="p-2 rounded-full bg-white border-2 border-transparent hover:bg-red-100 hover:border-red-400 hover:text-red-600"
             title="Clear Canvas"
           >
@@ -309,6 +329,7 @@ const handleSummarize = async () => {
           </button>
           <button
             onClick={handleDownload}
+            disabled={!isTeacher} 
             className="p-2 rounded-full bg-white border-2 border-transparent hover:bg-green-100 hover:border-green-400 hover:text-green-600"
             title="Download PNG"
           >
@@ -317,6 +338,7 @@ const handleSummarize = async () => {
           <button
             type="button"
             onClick={() => fileInputRef.current.click()}
+            disabled={!isTeacher}
             className="p-2 rounded-full bg-white border-2 border-transparent hover:bg-blue-100 hover:border-blue-400 hover:text-blue-600"
             title="Import Image"
           >
@@ -331,7 +353,7 @@ const handleSummarize = async () => {
           />
           <button
     onClick={handleSummarize}
-    disabled={isSummarizing}
+    disabled={!isTeacher || isSummarizing}
     className="p-2 rounded-full bg-white border-2 border-transparent hover:bg-purple-100 hover:border-purple-400 hover:text-purple-600 disabled:opacity-50"
     title="Generate AI Summary"
   >
