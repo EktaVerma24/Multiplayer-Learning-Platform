@@ -199,6 +199,10 @@ const handleSummarize = async () => {
     canvas.isDrawingMode = isTeacher && tool === 'pencil';
     canvas.selection = isTeacher && tool === 'select';
 
+    if (!isTeacher) {
+      canvas.skipTargetFind = true;
+    }
+
     canvas.forEachObject(obj => {
       obj.selectable = isTeacher && tool === 'select';
       obj.evented = isTeacher;
@@ -229,7 +233,7 @@ const handleSummarize = async () => {
   const handleUndo = () => { if (!isTeacher) return; if (historyIndex > 0) { isRemoteUpdate.current = true; const newIndex = historyIndex - 1; setHistoryIndex(newIndex); fabricRef.current.loadFromJSON(history[newIndex], () => { fabricRef.current.renderAll(); emitState(history[newIndex]); isRemoteUpdate.current = false; }); } };
   const handleRedo = () => { if (!isTeacher) return; if (historyIndex < history.length - 1) { isRemoteUpdate.current = true; const newIndex = historyIndex + 1; setHistoryIndex(newIndex); fabricRef.current.loadFromJSON(history[newIndex], () => { fabricRef.current.renderAll(); emitState(history[newIndex]); isRemoteUpdate.current = false; }); } };
   const handleClear = () => { if (!isTeacher) return; fabricRef.current.clear(); saveState(); };
-  const handleDownload = () => { if (!isTeacher) return; const dataURL = fabricRef.current.toDataURL({ format: 'png' }); const link = document.createElement('a'); link.href = dataURL; link.download = `whiteboard-${classroomId}.png`; link.click(); };
+  const handleDownload = () => { const dataURL = fabricRef.current.toDataURL({ format: 'png' }); const link = document.createElement('a'); link.href = dataURL; link.download = `whiteboard-${classroomId}.png`; link.click(); };
   const handleImportImage = (e) => {
     if (!isTeacher) return;
     const file = e.target.files[0];
@@ -329,7 +333,6 @@ const handleSummarize = async () => {
           </button>
           <button
             onClick={handleDownload}
-            disabled={!isTeacher} 
             className="p-2 rounded-full bg-white border-2 border-transparent hover:bg-green-100 hover:border-green-400 hover:text-green-600"
             title="Download PNG"
           >
