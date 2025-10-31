@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
@@ -8,6 +8,8 @@ import API from "./api/axios";
 import CreateQuiz from "./pages/CreateQuiz.jsx";
 import CreateChallenge from "./pages/CreateChallenge.jsx";
 import AttemptChallenge from "./pages/AttemptChallenge.jsx";
+import Analytics from "./pages/Analytics.jsx";
+import { track } from "./api/analytics";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -48,6 +50,7 @@ function App() {
 
   return (
     <Router>
+      {user && <RouteAnalytics />}
       <Routes>
         <Route path="/" element={<Login setUser={setUser} />} />
 
@@ -58,6 +61,7 @@ function App() {
           <Route path="/create-quiz/:id" element={<CreateQuiz user={user} />} />
           <Route path="/create-challenge/:id" element={<CreateChallenge user={user} />} />
           <Route path="/attemptchallenge/:id" element={<AttemptChallenge user={user} />} />
+          <Route path="/analytics" element={<Analytics />} />
           {/* <Route path="/availablejobs" element={<AvailableJobs user={user} />} /> */}
         </Route>
 
@@ -68,3 +72,26 @@ function App() {
 }
 
 export default App;
+
+// Route-level analytics: page views + dwell time
+function RouteAnalytics() {
+  const location = useLocation();
+  const last = (RouteAnalytics.__last ||= { path: location.pathname, ts: Date.now() });
+
+  // on route change, emit page_view for previous path with duration
+  useEffect(() => {
+    const now = Date.now();
+    const durationMs = now - last.ts;
+    // send dwell for previous page
+    track("page_view", { page: last.path }, { durationMs });
+    // update ref
+    last.path = location.pathname;
+    last.ts = now;
+    // heartbeat while on page
+    const id = setInterval(() => track("session_heartbeat", { page: last.path }), 30000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  return null;
+}

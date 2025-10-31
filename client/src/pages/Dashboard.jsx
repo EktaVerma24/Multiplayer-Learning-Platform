@@ -398,6 +398,9 @@ export default function Dashboard({ user }) {
                     <p className="text-slate-500 mt-2 text-lg">
                         Ready to learn? Dive into a classroom or generate new study notes.
                     </p>
+                    <button onClick={() => {navigate("/analytics")}}  className="cursor-pointer px-3 py-1 rounded-lg font-bold bg-violet-500 text-white absolute top-10 right-20">
+                        Analytics
+                    </button>
                 </header>
                 
                 <section className="mb-12">

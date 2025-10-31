@@ -13,6 +13,7 @@ import challengeRoutes from './routes/challengeRoutes.js';
 import quizRoutes from './routes/quizRoutes.js';
 import noteRoutes from './routes/noteRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
 
 
 const app = express();
@@ -37,6 +38,7 @@ app.use('/api/challenges', challengeRoutes);
 app.use('/api/quizzes', quizRoutes);  
 app.use('/api/notes', noteRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 const server = http.createServer(app);
 setupSocket(server); // socket.io logic
