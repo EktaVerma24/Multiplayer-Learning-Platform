@@ -50,58 +50,8 @@ app.use('/api/notes', noteRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// Serve static files from the React app in production
-if (process.env.NODE_ENV === 'production') {
-  // Check if running on Render (where build is copied to server/client/dist)
-  const renderPath = path.join(__dirname, '../client/dist');
-  const localPath = path.join(__dirname, '../../client/dist');
-  
-  let clientBuildPath;
-  if (fs.existsSync(renderPath)) {
-    clientBuildPath = renderPath;
-    console.log('📁 Using Render path for client files');
-  } else if (fs.existsSync(localPath)) {
-    clientBuildPath = localPath;
-    console.log('📁 Using local path for client files');
-  } else {
-    console.error('❌ Client build not found at:', renderPath, 'or', localPath);
-    clientBuildPath = renderPath; // fallback
-  }
-  
-  console.log('📁 Serving static files from:', clientBuildPath);
-  
-  // Serve static files with proper cache headers
-  app.use(express.static(clientBuildPath, {
-    maxAge: '1d',
-    etag: true,
-    lastModified: true
-  }));
-
-  // Handle React routing - return index.html for any non-API routes
-  // This MUST be after all API routes
-  app.use((req, res, next) => {
-    // Skip if it's an API request or already handled
-    if (req.path.startsWith('/api') || res.headersSent) {
-      return next();
-    }
-    
-    // Only handle GET requests for HTML pages
-    if (req.method === 'GET' && !req.path.includes('.')) {
-      console.log('🔄 Serving index.html for:', req.path);
-      const indexPath = path.join(clientBuildPath, 'index.html');
-      return res.sendFile(indexPath, (err) => {
-        if (err) {
-          console.error('❌ Error sending index.html:', err);
-          res.status(500).send('Error loading application');
-        }
-      });
-    }
-    
-    next();
-  });
-  
-  console.log('✅ SPA routing configured - all non-API routes will serve index.html');
-}
+// Note: Client is deployed separately, server only serves API endpoints
+console.log('✅ Server configured for API-only mode (client deployed separately)');
 
 const server = http.createServer(app);
 setupSocket(server); // socket.io logic
