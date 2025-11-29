@@ -8,6 +8,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { setupSocket } from './socket.js';
 import authRoutes from './routes/authRoutes.js';
 import classroomRoutes from './routes/classroomRoutes.js';
@@ -51,14 +52,20 @@ app.use('/api/analytics', analyticsRoutes);
 
 // Serve static files from the React app in production
 if (process.env.NODE_ENV === 'production') {
-  // Try multiple possible paths for the client build
-  let clientBuildPath = path.join(__dirname, '../../client/dist');
-  
   // Check if running on Render (where build is copied to server/client/dist)
   const renderPath = path.join(__dirname, '../client/dist');
-  const fs = await import('fs');
+  const localPath = path.join(__dirname, '../../client/dist');
+  
+  let clientBuildPath;
   if (fs.existsSync(renderPath)) {
     clientBuildPath = renderPath;
+    console.log('📁 Using Render path for client files');
+  } else if (fs.existsSync(localPath)) {
+    clientBuildPath = localPath;
+    console.log('📁 Using local path for client files');
+  } else {
+    console.error('❌ Client build not found at:', renderPath, 'or', localPath);
+    clientBuildPath = renderPath; // fallback
   }
   
   console.log('📁 Serving static files from:', clientBuildPath);
