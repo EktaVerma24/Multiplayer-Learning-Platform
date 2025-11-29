@@ -113,17 +113,37 @@ export default function VideoCall({classroomId, user}) {
 
   const startCall = async () => {
     console.log("📞 Starting call in room:", classroomId);
+    
+    if (!socket) {
+      alert("Socket not connected. Please refresh the page.");
+      return;
+    }
+    
     try {
       setIsCaller(true);
       setIsInCall(true);
+      
+      console.log("🔗 Creating peer connection...");
       createPeerConnection();
+      
+      if (!pcRef.current) {
+        throw new Error("Failed to create peer connection");
+      }
+      
+      console.log("🎥 Enabling camera and mic...");
       await enableCameraAndMic();
+      
+      console.log("📝 Creating offer...");
       const offer = await pcRef.current.createOffer();
       await pcRef.current.setLocalDescription(offer);
-      console.log("📤 Sending offer:", offer);
+      
+      console.log("📤 Sending offer to room:", classroomId);
       socket.emit("webrtc:offer", { classroomId, offer, to: null });
+      console.log("✅ Call started successfully");
     } catch (error) {
       console.error("❌ Error starting call:", error);
+      setIsInCall(false);
+      setIsCaller(false);
       alert("Failed to start call: " + error.message);
     }
   };
@@ -156,19 +176,50 @@ export default function VideoCall({classroomId, user}) {
     if (!stream) {
       try {
         console.log("🎥 Requesting camera and mic access...");
+        
+        // Check if getUserMedia is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("getUserMedia is not supported in this browser. Use HTTPS or localhost.");
+        }
+        
         const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         console.log("✅ Camera and mic access granted");
+        console.log("📹 Stream tracks:", localStream.getTracks().map(t => `${t.kind}: ${t.label}`));
+        
         setStream(localStream);
-        if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = localStream;
+          console.log("✅ Local video element updated");
+        }
+        
         localStream.getTracks().forEach((track) => {
-          console.log("➕ Adding track:", track.kind);
-          pcRef.current.addTrack(track, localStream);
+          console.log("➕ Adding track:", track.kind, track.label);
+          if (pcRef.current) {
+            pcRef.current.addTrack(track, localStream);
+          }
         });
         setCameraOn(true);
         setMicOn(true);
       } catch (error) {
         console.error("❌ Error accessing camera and mic:", error);
-        alert("Cannot access camera/microphone. Please grant permissions and try again.");
+        console.error("Error name:", error.name);
+        console.error("Error message:", error.message);
+        
+        let errorMsg = "Cannot access camera/microphone. ";
+        if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+          errorMsg += "Please allow camera and microphone permissions in your browser settings.";
+        } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+          errorMsg += "No camera or microphone found on your device.";
+        } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+          errorMsg += "Camera/microphone is already in use by another application.";
+        } else if (error.name === "OverconstrainedError") {
+          errorMsg += "Camera/microphone constraints cannot be satisfied.";
+        } else {
+          errorMsg += error.message;
+        }
+        
+        alert(errorMsg);
+        throw error;
       }
     } else {
       stream.getVideoTracks().forEach((track) => (track.enabled = true));
