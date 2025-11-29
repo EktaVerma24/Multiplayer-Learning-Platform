@@ -64,8 +64,7 @@ export default function Quiz({ classroomId }) {
         if (!isStudent || !selectedQuiz) return;
         try {
             const res = await API.post(`/quizzes/submit/${selectedQuiz._id}`, {
-                answers,
-                studentId: user._id,
+                answers
             });
             setSubmittedScore(res.data.score);
             setCorrectAnswers(res.data.correctAnswers);

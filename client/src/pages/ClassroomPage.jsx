@@ -157,12 +157,9 @@ export default function ClassroomPage({ user }) {
   }, [user, classroom]);
 
   useEffect(() => {
-    socket.on("usersInChat", ({ users }) => {
-      setUsersInChat(users);
-      console.log("current users in chat:", users);
-    });
-    
-    return () => socket.off("usersInChat");
+    socket.on("usersInChat", ({ users }) => {
+      setUsersInChat(users);
+    });    return () => socket.off("usersInChat");
   }, [socket]);
 
   useEffect(() => {
@@ -201,20 +198,16 @@ export default function ClassroomPage({ user }) {
   useEffect(() => {
     if (!socket || !user) return;
 
-    socket.emit("joinClassroom", { classroomId, user });
-    console.log(`Attempting to join classroom: ${classroomId}`);
+    socket.emit("joinClassroom", { classroomId, user });
 
-    const handleReceiveMessage = (message) => {
+    const handleReceiveMessage = (message) => {
       // This handles new messages from the socket, adding them to the existing state
       setMessages((prev) => [...prev, message]);
     };
-    socket.on("receiveMessage", handleReceiveMessage);
+    socket.on("receiveMessage", handleReceiveMessage);
 
-    console.log("first time?");
-
-    return () => {
-      console.log(`Leaving classroom ${classroomId}`);
-      socket.emit("leaveClassroom", { classroomId, user });
+    return () => {
+      socket.emit("leaveClassroom", { classroomId, user });
       socket.off("receiveMessage", handleReceiveMessage);
     };
   }, [socket, classroomId, user]);
@@ -227,26 +220,20 @@ export default function ClassroomPage({ user }) {
   }
  
   // --- MODIFIED: Direct function to handle kicking a user ---
-  const handleKickUser = async (userToKick) => {
-    if (!adminChatAccess || !userToKick) return;
+  const handleKickUser = async (userToKick) => {
+    if (!adminChatAccess || !userToKick) return;
 
-    try {
-        console.log(`Admin ${user.name} is kicking user: ${userToKick.name}`);
-        
-        // 1. Emit socket event to remove user from chat in real-time
-        socket.emit("kickUser", { classroomId, userId: userToKick._id });
+    try {
+        // 1. Emit socket event to remove user from chat in real-time
+        socket.emit("kickUser", { classroomId, userId: userToKick._id });
 
-        // 2. Call API to ban user from the classroom permanently
-        await API.patch(`/classrooms/ban/${classroomId}`, { userId: userToKick._id });
-        
-        console.log(`User ${userToKick.name} has been kicked and banned.`);
+        // 2. Call API to ban user from the classroom permanently
+        await API.patch(`/classrooms/ban/${classroomId}`, { userId: userToKick._id });
 
-    } catch (err) {
-        console.error("Failed to kick/ban user:", err);
-    }
-  };
-
-
+    } catch (err) {
+        console.error("Failed to kick/ban user:", err);
+    }
+  };
   useEffect(() => {
     socket.on("chatPausedByAdmin", ({ paused }) => {
       setPaused(paused); 

@@ -1,19 +1,17 @@
 import express from "express";
 import { createClassroom, getAllClassrooms, getClassroomById, banStudents, deleteClassroom } from "../controllers/classroomController.js";
+import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// Create classroom
-router.post("/", createClassroom);
+router.post("/", protect, createClassroom);
 
-// Get all classrooms
-router.get("/", getAllClassrooms);
+router.get("/", protect, getAllClassrooms);
 
-// Get a single classroom by ID
-router.get("/:id", getClassroomById);
+router.get("/:id", protect, getClassroomById);
 
-router.patch("/ban/:classroomId", banStudents);
+router.patch("/ban/:classroomId", protect, banStudents);
 
-router.delete("/:id" , deleteClassroom);
+router.delete("/:id", protect, deleteClassroom);
 
 export default router;

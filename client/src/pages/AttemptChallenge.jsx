@@ -1,5 +1,5 @@
 import { useState, useEffect, use } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios"; // Using axios for API calls
 import API from "../api/axios";
@@ -41,6 +41,7 @@ const ErrorDisplay = ({ message }) => (
 
 export default function AttemptChallenge() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const [challenge, setChallenge] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -49,6 +50,7 @@ export default function AttemptChallenge() {
     const [code, setCode] = useState(BOILERPLATE_CODE.javascript);
     const [isRunning, setIsRunning] = useState(false);
     const [runResult, setRunResult] = useState({ status: null, message: "" });
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const LoadingSpinner = () => (
         <div className="h-screen flex justify-center items-center p-10">
             <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-violet-500"></div>
@@ -176,10 +178,38 @@ export default function AttemptChallenge() {
     setIsRunning(false);
 };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("Submitting final solution:", { code, language });
-        alert("Solution submitted! (Check console for data)");
+        
+        if (!code.trim()) {
+            alert("❌ Please write some code before submitting!");
+            return;
+        }
+        
+        setIsSubmitting(true);
+        
+        try {
+            await API.post(`/challenges/${id}/submit`, {
+                code: code,
+                language: language
+            });
+            
+            alert("✅ Solution submitted successfully!");
+            
+            // Navigate back to the classroom
+            if (challenge?.classroom) {
+                navigate(`/classroom/${challenge.classroom}?tab=challenge`);
+            } else {
+                navigate('/dashboard');
+            }
+            
+        } catch (err) {
+            console.error("Submission error:", err);
+            const errorMessage = err.response?.data?.error || err.response?.data?.message || "Failed to submit solution. Please try again.";
+            alert(`❌ ${errorMessage}`);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     if (isLoading) return <LoadingSpinner />;
@@ -297,12 +327,13 @@ export default function AttemptChallenge() {
                             </motion.button>
                             <motion.button
                                 type="submit"
-                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-all"
+                                disabled={isSubmitting}
+                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 whileHover={{ scale: 1 }}
                                 whileTap={{ scale: 0.95 }}
                             >
-                                <FaCheck />
-                                Submit Solution
+                                {isSubmitting ? <FaSpinner className="animate-spin" /> : <FaCheck />}
+                                {isSubmitting ? 'Submitting...' : 'Submit Solution'}
                             </motion.button>
                         </form>
                     </div>

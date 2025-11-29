@@ -1,24 +1,21 @@
 import express from "express";
-import { createChallenge , submitSolution , getChallengesByClassroom, eligibleToMakeChallenge , getChallengeById , runCode } from "../controllers/challengeController.js";
-import upload from "../middlewares/multer.js"; 
+import { createChallenge , submitSolution , getChallengesByClassroom, eligibleToMakeChallenge , getChallengeById , runCode, getChallengeSubmissions } from "../controllers/challengeController.js";
+import upload from "../middlewares/multer.js";
+import { protect } from "../middlewares/authMiddleware.js";
 const router = express.Router();
 
-// Create Challenge
-router.post("/", upload.single("challengeImage"), createChallenge);
+router.post("/", protect, upload.single("challengeImage"), createChallenge);
 
-//eligible
-router.get("/eligible", eligibleToMakeChallenge);
+router.get("/eligible", protect, eligibleToMakeChallenge);
 
-// Submit Solution
-router.post("/:challengeId/submit", submitSolution);
+router.post("/:challengeId/submit", protect, submitSolution);
 
-// Get Challenges by Classroom
-router.get("/classroom/:classroomId", getChallengesByClassroom);
+router.get("/classroom/:classroomId", protect, getChallengesByClassroom);
 
-// Get Challenge by ID
-router.get("/:id", getChallengeById);
+router.get("/:id", protect, getChallengeById);
 
-// Run Code
-router.post("/run", runCode);
+router.get("/:challengeId/submissions", protect, getChallengeSubmissions);
+
+router.post("/run", protect, runCode);
 
 export default router;

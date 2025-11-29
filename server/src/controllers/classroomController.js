@@ -5,31 +5,15 @@ import mongoose from 'mongoose';
 
 export const createClassroom = async (req, res) => {
     try {
-        // ... (existing logic to determine teacherId) ...
-        let teacherId;
+        // ✅ Use authenticated user's ID from protect middleware
+        const teacherId = req.user._id;
 
-        if (req.user) {
-            teacherId = req.user.id || req.user._id; 
-        } 
-        
-        if (!teacherId && req.body.creatorId) {
-            teacherId = req.body.creatorId;
+        // ✅ Verify user is a teacher
+        if (req.user.role !== 'teacher') {
+            return res.status(403).json({ error: "Only teachers can create classrooms" });
         }
 
         console.log("Teacher ID Retrieved:", teacherId);
-
-        if (!teacherId) {
-            console.error("Authentication Error: Missing teacher ID from req.user or req.body.");
-            return res.status(401).json({ 
-                message: "A Teacher ID is required. Please ensure you are logged in and the 'creatorId' is in the request body." 
-            });
-        }
-        
-        if (!mongoose.Types.ObjectId.isValid(teacherId)) {
-            console.error("Authentication Error: Invalid teacher ID format.", teacherId);
-            return res.status(400).json({ message: "Teacher ID format is invalid." });
-        }
-        // ... (end of existing logic) ...
 
         const classroomData = {
             ...req.body,
@@ -92,9 +76,15 @@ export const banStudents = async (req, res) => {
     const { classroomId } = req.params;
     const { userId } = req.body;
 
+    const requestingUserId = req.user._id;
+
     if(!userId) return res.status(400).json({ message: "User ID is required" });
     const classroom = await Classroom.findById(classroomId);
     if (!classroom) return res.status(404).json({ message: "Classroom not found" });
+
+    if (!classroom.teacher.equals(requestingUserId)) {
+      return res.status(403).json({ message: "Only the classroom teacher can ban students" });
+    }
 
     if(classroom.bannedUsers.includes(userId)) {
       return res.status(400).json({ message: "User is already banned" });
@@ -111,10 +101,19 @@ export const banStudents = async (req, res) => {
 export const deleteClassroom = async (req, res) => {
     try {
         const { id } = req.params;
-        const deletedClassroom = await Classroom.findByIdAndDelete(id);
-        if(!deletedClassroom){
+        
+        const requestingUserId = req.user._id;
+        
+        const classroom = await Classroom.findById(id);
+        if(!classroom){
             return res.status(404).json({ message: `No classroom with this id: ${id}` });
         }
+        
+        if (!classroom.teacher.equals(requestingUserId)) {
+            return res.status(403).json({ message: "Only the classroom teacher can delete this classroom" });
+        }
+        
+        const deletedClassroom = await Classroom.findByIdAndDelete(id);
         return res.status(200).send(deletedClassroom);
     } catch (err) {
         res.status(500).json({ message: err.message });

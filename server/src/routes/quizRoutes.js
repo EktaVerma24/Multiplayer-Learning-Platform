@@ -1,20 +1,16 @@
 import express from "express";
 import { createQuiz , getQuizByClassroom , eligibleToMakeQuiz , submitQuiz , getQuizAttempts } from "../controllers/quizController.js";
+import { protect } from "../middlewares/authMiddleware.js";
 const router = express.Router();
 
-// Create Quiz
-router.post("/", createQuiz);
+router.post("/", protect, createQuiz);
 
-// Eligible to make quiz
-router.get("/eligible", eligibleToMakeQuiz);
+router.get("/eligible", protect, eligibleToMakeQuiz);
 
-// Get Quizzes by Classroom
-router.get("/classroom/:classroomId", getQuizByClassroom);
+router.get("/classroom/:classroomId", protect, getQuizByClassroom);
 
-// Submit quiz (student)
-router.post("/submit/:quizId", submitQuiz);
+router.post("/submit/:quizId", protect, submitQuiz);
 
-// ** THIS IS THE MISSING ROUTE FOR TEACHERS TO VIEW SUBMISSIONS **
-router.get("/submissions/:quizId", getQuizAttempts);
+router.get("/submissions/:quizId", protect, getQuizAttempts);
 
 export default router;
