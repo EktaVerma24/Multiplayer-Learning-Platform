@@ -182,7 +182,23 @@ export default function VideoCall({classroomId, user}) {
           throw new Error("getUserMedia is not supported in this browser. Use HTTPS or localhost.");
         }
         
-        const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        // Try with both video and audio first
+        let localStream;
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          console.log("✅ Got both camera and microphone");
+        } catch (error) {
+          console.warn("⚠️ Could not get both video and audio, trying video only:", error.message);
+          // Fallback: try video only if audio fails
+          try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            console.log("✅ Got camera only (no microphone available)");
+            alert("Note: Microphone not available. Video call will work but without audio from your side.");
+          } catch (videoError) {
+            console.error("❌ Could not get video either:", videoError);
+            throw videoError;
+          }
+        }
         console.log("✅ Camera and mic access granted");
         console.log("📹 Stream tracks:", localStream.getTracks().map(t => `${t.kind}: ${t.label}`));
         
@@ -198,8 +214,16 @@ export default function VideoCall({classroomId, user}) {
             pcRef.current.addTrack(track, localStream);
           }
         });
-        setCameraOn(true);
-        setMicOn(true);
+        
+        // Set camera/mic state based on available tracks
+        const hasVideo = localStream.getVideoTracks().length > 0;
+        const hasAudio = localStream.getAudioTracks().length > 0;
+        setCameraOn(hasVideo);
+        setMicOn(hasAudio);
+        
+        if (!hasAudio) {
+          console.warn("⚠️ No audio track available - microphone will be disabled");
+        }
       } catch (error) {
         console.error("❌ Error accessing camera and mic:", error);
         console.error("Error name:", error.name);
@@ -230,16 +254,21 @@ export default function VideoCall({classroomId, user}) {
   };
 
   const toggleCamera = () => {
-    if (stream) {
+    if (stream && stream.getVideoTracks().length > 0) {
       stream.getVideoTracks().forEach((track) => (track.enabled = !track.enabled));
       setCameraOn((prev) => !prev);
+    } else {
+      console.warn("⚠️ No video track available");
     }
   };
 
   const toggleMic = () => {
-    if (stream) {
+    if (stream && stream.getAudioTracks().length > 0) {
       stream.getAudioTracks().forEach((track) => (track.enabled = !track.enabled));
       setMicOn((prev) => !prev);
+    } else {
+      console.warn("⚠️ No audio track available");
+      alert("Microphone not available on this device");
     }
   };
 
