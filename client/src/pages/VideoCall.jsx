@@ -5,7 +5,7 @@ import { motion } from "framer-motion"; // Import motion for animations
 
 const socket = io("http://localhost:5000");
 
-export default function VideoCall() {
+export default function VideoCall({classroomId}) {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const pcRef = useRef(null);
@@ -15,7 +15,6 @@ export default function VideoCall() {
   const [incomingCall, setIncomingCall] = useState(false);
   const [showIncomingNotification, setShowIncomingNotification] = useState(false);
   const [callerId, setCallerId] = useState(null);
-  const [classroomId] = useState("room-123");
   const [cameraOn, setCameraOn] = useState(false);
   const [micOn, setMicOn] = useState(false);
   const [stream, setStream] = useState(null);
@@ -294,7 +293,7 @@ export default function VideoCall() {
       <div className="flex justify-between items-center p-4 shadow-lg bg-white">
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-violet-500">WebRTC Video Call</h1>
         <div className="flex items-center gap-4">
-          <div className="text-lg text-slate-500">Room: {classroomId}</div>
+          <div className="text-lg text-slate-500">RoomId: {classroomId}</div>
         </div>
       </div>
 

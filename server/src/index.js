@@ -12,6 +12,8 @@ import classroomRoutes from './routes/classroomRoutes.js';
 import challengeRoutes from './routes/challengeRoutes.js';
 import quizRoutes from './routes/quizRoutes.js';
 import noteRoutes from './routes/noteRoutes.js';
+import messageRoutes from './routes/messageRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
 
 
 const app = express();
@@ -25,7 +27,7 @@ app.use(
     origin: 'http://localhost:5173',
     credentials: true,
     contentType: ['application/json', 'multipart/form-data'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   })
 );
 
@@ -35,7 +37,8 @@ app.use('/api/classrooms', classroomRoutes);
 app.use('/api/challenges', challengeRoutes);
 app.use('/api/quizzes', quizRoutes);  
 app.use('/api/notes', noteRoutes);
-
+app.use('/api/messages', messageRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 const server = http.createServer(app);
 setupSocket(server); // socket.io logic
@@ -58,3 +61,5 @@ mongoose
     console.error('❌ MongoDB connection error:', err);
     process.exit(1);
   });
+
+  

@@ -5,13 +5,59 @@ import QuizAttempt from "../models/QuizAttempt.js";
 // ------------------- Create Quiz -------------------
 export const createQuiz = async (req, res) => {
     try {
-        const { title, questions, classroom, teacher } = req.body;
+        const { title, questions, classroom } = req.body;
 
-        if (!title || !questions || !classroom || !teacher) {
+        // ✅ Use authenticated user's ID from protect middleware
+        const teacherId = req.user._id;
+
+        if (!title || !questions || !classroom) {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
-        const quiz = await Quiz.create({ title, questions, classroom, teacher });
+        // ✅ Validate questions array
+        if (!Array.isArray(questions) || questions.length === 0) {
+            return res.status(400).json({ error: "Questions must be a non-empty array" });
+        }
+        if (questions.length > 50) {
+            return res.status(400).json({ error: "Quiz cannot have more than 50 questions" });
+        }
+
+        // ✅ Validate each question structure
+        for (const question of questions) {
+            if (!question.question || !question.options || !Array.isArray(question.options)) {
+                return res.status(400).json({ error: "Each question must have 'question' text and 'options' array" });
+            }
+            if (question.options.length < 2) {
+                return res.status(400).json({ error: "Each question must have at least 2 options" });
+            }
+            if (question.options.length > 6) {
+                return res.status(400).json({ error: "Each question cannot have more than 6 options" });
+            }
+            if (typeof question.correctOption !== 'number' || question.correctOption < 0 || question.correctOption >= question.options.length) {
+                return res.status(400).json({ error: "correctOption must be a valid index of the options array" });
+            }
+        }
+
+        // ✅ Validate title length
+        if (title.length > 200) {
+            return res.status(400).json({ error: "Title cannot exceed 200 characters" });
+        }
+
+        // ✅ Verify user is a teacher
+        if (req.user.role !== 'teacher') {
+            return res.status(403).json({ error: "Only teachers can create quizzes" });
+        }
+
+        // ✅ Verify teacher owns/teaches this classroom
+        const classroomDoc = await Classroom.findById(classroom);
+        if (!classroomDoc) {
+            return res.status(404).json({ error: "Classroom not found" });
+        }
+        if (!classroomDoc.teacher.equals(teacherId)) {
+            return res.status(403).json({ error: "You are not authorized to create quizzes for this classroom" });
+        }
+
+        const quiz = await Quiz.create({ title, questions, classroom, teacher: teacherId });
         res.status(201).json(quiz);
     } catch (err) {
         console.error("Error creating quiz:", err);
@@ -51,14 +97,31 @@ export const eligibleToMakeQuiz = async (req, res) => {
 export const submitQuiz = async (req, res) => {
     try {
         const { quizId } = req.params;
-        const { studentId, answers } = req.body;
+        const { answers } = req.body;
 
-        if (!studentId || !answers) {
-            return res.status(400).json({ message: "Missing studentId or answers" });
+        // ✅ Use authenticated user's ID from protect middleware
+        const studentId = req.user._id;
+
+        if (!answers) {
+            return res.status(400).json({ message: "Missing answers" });
         }
 
         const quiz = await Quiz.findById(quizId);
         if (!quiz) return res.status(404).json({ message: "Quiz not found" });
+
+        // ✅ Check if student already attempted this quiz
+        const existingAttempt = await QuizAttempt.findOne({ 
+            student: studentId, 
+            quiz: quizId 
+        });
+
+        if (existingAttempt) {
+            return res.status(400).json({ 
+                message: "You have already submitted this quiz",
+                score: existingAttempt.score,
+                previousAttempt: existingAttempt
+            });
+        }
 
         // Calculate score and map correct answers
         let score = 0;

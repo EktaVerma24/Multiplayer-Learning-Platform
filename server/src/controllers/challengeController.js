@@ -7,17 +7,36 @@ dotenv.config();
 
 export const createChallenge = async (req, res) => {
   try {
-    const { title, description, classroom, teacher, testCases, difficulty , languageTemplates } = req.body;
+    const { title, description, classroom, testCases, difficulty , languageTemplates } = req.body;
 
-    // ✅ Validate required fields
-    if (!title || !description || !classroom || !teacher || !testCases || !languageTemplates) {
+    const teacherId = req.user._id;
+
+    if (!title || !description || !classroom || !testCases || !languageTemplates) {
       return res.status(400).json({
-        error: "Missing required fields: title, description, classroom, teacher, languageTemplates",
+        error: "Missing required fields: title, description, classroom, languageTemplates",
       });
     }
 
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: "Only teachers can create challenges" });
+    }
+
+    const classroomDoc = await Classroom.findById(classroom);
+    if (!classroomDoc) {
+      return res.status(404).json({ error: "Classroom not found" });
+    }
+    if (!classroomDoc.teacher.equals(teacherId)) {
+      return res.status(403).json({ error: "You are not authorized to create challenges for this classroom" });
+    }
+
     console.log("Received raw string for testCases:", testCases);
-    const parsedLanguageTemplates = JSON.parse(languageTemplates);
+    
+    let parsedLanguageTemplates;
+    try {
+      parsedLanguageTemplates = JSON.parse(languageTemplates);
+    } catch (parseError) {
+      return res.status(400).json({ error: "Invalid format for languageTemplates." });
+    }
 
     let parsedTestCases = [];
     if (testCases && typeof testCases === 'string') {
@@ -26,13 +45,37 @@ export const createChallenge = async (req, res) => {
         } catch (parseError) {
             return res.status(400).json({ error: "Invalid format for testCases." });
         }
-        console.log("Parsed testCases:", parsedTestCases);
     } else {
        // Optional: handle cases where testCases isn't sent or isn't a string
        return res.status(400).json({ error: "testCases field is missing or not a string." });
     }
 
-    console.log("Received parsed array for testCases:", parsedTestCases);
+    if (!Array.isArray(parsedTestCases) || parsedTestCases.length === 0) {
+      return res.status(400).json({ error: "testCases must be a non-empty array" });
+    }
+    if (parsedTestCases.length > 50) {
+      return res.status(400).json({ error: "testCases cannot exceed 50 items" });
+    }
+
+    for (const testCase of parsedTestCases) {
+      if (!testCase.input || !testCase.expectedOutput) {
+        return res.status(400).json({ error: "Each test case must have 'input' and 'expectedOutput' fields" });
+      }
+    }
+
+    if (!parsedLanguageTemplates || Object.keys(parsedLanguageTemplates).length === 0) {
+      return res.status(400).json({ error: "languageTemplates must have at least one language" });
+    }
+
+    if (title.length > 200) {
+      return res.status(400).json({ error: "Title cannot exceed 200 characters" });
+    }
+    if (description.length > 5000) {
+      return res.status(400).json({ error: "Description cannot exceed 5000 characters" });
+    }
+    if (!['Easy', 'Medium', 'Hard'].includes(difficulty)) {
+      return res.status(400).json({ error: "Difficulty must be 'Easy', 'Medium', or 'Hard'" });
+    }
 
     let imageUrl = null;
 
@@ -55,13 +98,13 @@ export const createChallenge = async (req, res) => {
       }
     }
 
-    // ✅ Create challenge
+    // ✅ Create challenge with verified teacher ID
     const challenge = await Challenge.create({
       title,
       description,
       difficulty,
       classroom,
-      teacher,
+      teacher: teacherId,
       testCases: parsedTestCases,
       languageTemplates: parsedLanguageTemplates,
       image: imageUrl,
@@ -85,10 +128,13 @@ export const createChallenge = async (req, res) => {
 
 export const submitSolution = async (req, res) => {
   try {
-    const { student, code, language } = req.body;
+    const { code, language } = req.body;
 
-    if (!student || !code) {
-      return res.status(400).json({ error: "Missing student or code" });
+    // ✅ Use authenticated user's ID from protect middleware
+    const studentId = req.user._id;
+
+    if (!code) {
+      return res.status(400).json({ error: "Missing code" });
     }
 
     const challenge = await Challenge.findById(req.params.challengeId);
@@ -96,11 +142,24 @@ export const submitSolution = async (req, res) => {
       return res.status(404).json({ error: "Challenge not found" });
     }
 
-    challenge.submissions.push({
-      student,
-      code,
-      language: language || "javascript",
-    });
+    // ✅ Check if student already submitted
+    const existingSubmissionIndex = challenge.submissions.findIndex(
+      s => s.student.equals(studentId)
+    );
+
+    if (existingSubmissionIndex !== -1) {
+      // Update existing submission
+      challenge.submissions[existingSubmissionIndex].code = code;
+      challenge.submissions[existingSubmissionIndex].language = language || "javascript";
+      challenge.submissions[existingSubmissionIndex].submittedAt = Date.now();
+    } else {
+      // Create new submission
+      challenge.submissions.push({
+        student: studentId,
+        code,
+        language: language || "javascript",
+      });
+    }
 
     await challenge.save();
     res.status(201).json({ message: "Submission saved" });
@@ -125,18 +184,13 @@ export const getChallengesByClassroom = async (req, res) => {
 export const eligibleToMakeChallenge = async (req, res) => {
   try {
     const { userId, classroomId } = req.query;
-    // console.log("Checking eligibility for user:", userId, "in classroom:", classroomId);
 
     const classroom = await Classroom.findById(classroomId);
     if (!classroom) {
       return res.status(404).json({ message: "Classroom not found" });
     }
 
-    console.log("Classroom found:", classroom.teacher.toString());
-    console.log("User ID:", userId);
-
     const isTeacher = classroom.teacher.equals(userId.trim());
-    console.log("Is user a teacher?", isTeacher);
     if (isTeacher) {
       return res.json({ eligible: true });
     }
@@ -160,6 +214,36 @@ export const getChallengeById = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 }
+
+// ✅ Get all submissions for a challenge (teachers only)
+export const getChallengeSubmissions = async (req, res) => {
+  try {
+    const { challengeId } = req.params;
+    
+    const challenge = await Challenge.findById(challengeId)
+      .populate('submissions.student', 'name email')
+      .select('title description submissions');
+    
+    if (!challenge) {
+      return res.status(404).json({ error: "Challenge not found" });
+    }
+    
+    // ✅ Verify requesting user is the challenge teacher
+    const fullChallenge = await Challenge.findById(challengeId);
+    if (!fullChallenge.teacher.equals(req.user._id)) {
+      return res.status(403).json({ error: "Only the challenge teacher can view submissions" });
+    }
+    
+    res.json({
+      challengeTitle: challenge.title,
+      challengeDescription: challenge.description,
+      submissions: challenge.submissions
+    });
+  } catch (err) {
+    console.error("Error fetching challenge submissions:", err);
+    res.status(500).json({ error: "Failed to fetch submissions" });
+  }
+};
 
 export const runCode = async (req, res) => {
   try {
