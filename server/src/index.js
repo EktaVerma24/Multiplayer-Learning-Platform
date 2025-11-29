@@ -24,7 +24,7 @@ app.use(express.json());
 // CORS
 app.use(
   cors({
-    origin: 'http://localhost:5173',
+    origin:  process.env.CLIENT_URL || 'http://localhost:5173',
     credentials: true,
     contentType: ['application/json', 'multipart/form-data'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
