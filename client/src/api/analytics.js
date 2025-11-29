@@ -1,8 +1,9 @@
 // client/src/api/analytics.js
 import axios from "axios";
 
+
 // Dedicated axios instance that does NOT use the global 401 redirect
-const AnalyticsAPI = axios.create({ baseURL: "http://localhost:5000/api" });
+const AnalyticsAPI = axios.create({ baseURL: import.meta.env.VITE_API_URL });
 
 let queue = [];
 let timer = null;

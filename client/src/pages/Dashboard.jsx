@@ -544,9 +544,9 @@ export default function Dashboard({ user }) {
                                                     <div id={`note-content-${note._id}`} className="note-content-area p-4 border-t border-gray-200 bg-white">
                                                         {note.sections?.map((section, i) => (
                                                             <div key={i} className="mb-4 last:mb-0">
-                                                                <h5 className="font-bold text-gray-800 text-md">{section.title}</h5>
-                                                                {section.imageUrl && (
-                                                                    <img src={`http://localhost:5000/image-proxy?url=${encodeURIComponent(section.imageUrl)}`} alt={section.title} className="my-2 max-w-sm h-auto rounded-md border" />
+                                                        <h5 className="font-bold text-gray-800 text-md">{section.title}</h5>
+                                                        {section.imageUrl && (
+                                                                    <img src={`${import.meta.env.VITE_BACKEND_URL}/image-proxy?url=${encodeURIComponent(section.imageUrl)}`} alt={section.title} className="my-2 max-w-sm h-auto rounded-md border" />
                                                                 )}
                                                                 <p className="text-sm text-gray-600 whitespace-pre-wrap mt-1">{section.content}</p>
                                                             </div>

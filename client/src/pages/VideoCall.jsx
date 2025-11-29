@@ -3,7 +3,10 @@ import io from "socket.io-client";
 import { FaPhone, FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaDesktop, FaShareSquare, FaPhoneSlash, FaClosedCaptioning } from 'react-icons/fa'; // Removed FaSun, FaMoon
 import { motion } from "framer-motion"; // Import motion for animations
 
-const socket = io("http://localhost:5000");
+const socket = io(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000", {
+  transports: ["websocket", "polling"],
+  withCredentials: true,
+});
 
 export default function VideoCall({classroomId}) {
   const localVideoRef = useRef(null);

@@ -7,7 +7,10 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const s = io("http://localhost:5000");
+    const s = io(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000", {
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
     setSocket(s);
 
     return () => {
