@@ -1,11 +1,6 @@
-const Message = require('../models/Message');
+import Message from '../models/Message.js';
 
-// --- Helper function (Optional, but often used for cleaner code) ---
-// Note: If you use an external 'express-async-handler' library, this is not needed.
-// If you are using plain async/await, you must handle errors manually as shown below.
-
-// --- 1. Save Message (POST) ---
-exports.saveMessage = async (req, res) => {
+export const saveMessage = async (req, res) => {
     try {
         const { classroomId, userId, message } = req.body;
 
@@ -32,10 +27,7 @@ exports.saveMessage = async (req, res) => {
     }
 };
 
-// --- 2. Get Messages (GET) ---
-// Renamed to 'getMessages' to match common naming conventions, assuming your routes expect this name.
-// If your routes file is expecting 'getMessagesByClassroom', you should use that name instead.
-exports.getMessages = async (req, res) => {
+export const getMessages = async (req, res) => {
     try {
         const { classroomId } = req.params;
 
@@ -51,11 +43,7 @@ exports.getMessages = async (req, res) => {
     }
 };
 
-// The exports are already implicitly done via `exports.functionName = ...`
-// If you prefer the object style (which is cleaner), you can use:
-/*
-module.exports = {
+export default {
     saveMessage,
-    getMessages // Assuming your messageRoutes.js uses { getMessages }
+    getMessages
 };
-*/
