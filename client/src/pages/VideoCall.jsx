@@ -3,7 +3,7 @@ import { FaPhone, FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaDesk
 import { motion } from "framer-motion";
 import { useSocket } from '../context/SocketContext';
 
-export default function VideoCall({classroomId}) {
+export default function VideoCall({classroomId, user}) {
   const { socket } = useSocket();
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -24,9 +24,13 @@ export default function VideoCall({classroomId}) {
   const speechRecognitionRef = useRef(null);
 
   useEffect(() => {
-    if (!socket) return;
+    if (!socket) {
+      console.error("❌ Socket not available in VideoCall");
+      return;
+    }
 
-    socket.emit("joinClassroom", { classroomId });
+    console.log("✅ VideoCall: Socket connected, joining classroom:", classroomId);
+    socket.emit("joinClassroom", { classroomId, user });
 
     socket.on("webrtc:incoming-call", ({ from, offer }) => {
       console.log("📞 Incoming call from:", from);
@@ -108,43 +112,63 @@ export default function VideoCall({classroomId}) {
   };
 
   const startCall = async () => {
-    setIsCaller(true);
-    setIsInCall(true);
-    createPeerConnection();
-    await enableCameraAndMic();
-    const offer = await pcRef.current.createOffer();
-    await pcRef.current.setLocalDescription(offer);
-    socket.emit("webrtc:offer", { classroomId, offer, to: null });
+    console.log("📞 Starting call in room:", classroomId);
+    try {
+      setIsCaller(true);
+      setIsInCall(true);
+      createPeerConnection();
+      await enableCameraAndMic();
+      const offer = await pcRef.current.createOffer();
+      await pcRef.current.setLocalDescription(offer);
+      console.log("📤 Sending offer:", offer);
+      socket.emit("webrtc:offer", { classroomId, offer, to: null });
+    } catch (error) {
+      console.error("❌ Error starting call:", error);
+      alert("Failed to start call: " + error.message);
+    }
   };
 
   const answerCall = async () => {
-    setIncomingCall(false);
-    setShowIncomingNotification(false);
-    setIsInCall(true);
-    if (!pcRef.current) createPeerConnection();
-    await pcRef.current.setRemoteDescription(new RTCSessionDescription(pcRef.current.remoteOffer));
-    pendingCandidates.current.forEach(async (c) => {
-      await pcRef.current.addIceCandidate(new RTCIceCandidate(c));
-    });
-    pendingCandidates.current = [];
+    console.log("📞 Answering call from:", callerId);
+    try {
+      setIncomingCall(false);
+      setShowIncomingNotification(false);
+      setIsInCall(true);
+      if (!pcRef.current) createPeerConnection();
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(pcRef.current.remoteOffer));
+      pendingCandidates.current.forEach(async (c) => {
+        await pcRef.current.addIceCandidate(new RTCIceCandidate(c));
+      });
+      pendingCandidates.current = [];
 
-    const answer = await pcRef.current.createAnswer();
-    await pcRef.current.setLocalDescription(answer);
-    socket.emit("webrtc:answer", { classroomId, answer, to: callerId });
-    await enableCameraAndMic();
+      const answer = await pcRef.current.createAnswer();
+      await pcRef.current.setLocalDescription(answer);
+      console.log("📤 Sending answer:", answer);
+      socket.emit("webrtc:answer", { classroomId, answer, to: callerId });
+      await enableCameraAndMic();
+    } catch (error) {
+      console.error("❌ Error answering call:", error);
+      alert("Failed to answer call: " + error.message);
+    }
   };
 
   const enableCameraAndMic = async () => {
     if (!stream) {
       try {
+        console.log("🎥 Requesting camera and mic access...");
         const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        console.log("✅ Camera and mic access granted");
         setStream(localStream);
         if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
-        localStream.getTracks().forEach((track) => pcRef.current.addTrack(track, localStream));
+        localStream.getTracks().forEach((track) => {
+          console.log("➕ Adding track:", track.kind);
+          pcRef.current.addTrack(track, localStream);
+        });
         setCameraOn(true);
         setMicOn(true);
       } catch (error) {
-        console.error("Error accessing camera and mic:", error);
+        console.error("❌ Error accessing camera and mic:", error);
+        alert("Cannot access camera/microphone. Please grant permissions and try again.");
       }
     } else {
       stream.getVideoTracks().forEach((track) => (track.enabled = true));
