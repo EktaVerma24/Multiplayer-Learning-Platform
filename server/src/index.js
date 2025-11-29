@@ -6,6 +6,8 @@ import express from 'express';
 import http from 'http';
 import mongoose from 'mongoose';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { setupSocket } from './socket.js';
 import authRoutes from './routes/authRoutes.js';
 import classroomRoutes from './routes/classroomRoutes.js';
@@ -15,6 +17,8 @@ import noteRoutes from './routes/noteRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -39,6 +43,22 @@ app.use('/api/quizzes', quizRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/analytics', analyticsRoutes);
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', message: 'Server is running' });
+});
+
+// Serve static files from the React app in production
+if (process.env.NODE_ENV === 'production') {
+  const clientBuildPath = path.join(__dirname, '../../client/dist');
+  app.use(express.static(clientBuildPath));
+
+  // Handle React routing - return index.html for any unknown routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+}
 
 const server = http.createServer(app);
 setupSocket(server); // socket.io logic
