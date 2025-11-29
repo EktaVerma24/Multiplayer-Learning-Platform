@@ -35,7 +35,12 @@ app.use(
   })
 );
 
-// Routes
+// Health check endpoint (before other routes)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', message: 'Server is running' });
+});
+
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/classrooms', classroomRoutes);
 app.use('/api/challenges', challengeRoutes);
@@ -44,20 +49,32 @@ app.use('/api/notes', noteRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK', message: 'Server is running' });
-});
-
 // Serve static files from the React app in production
 if (process.env.NODE_ENV === 'production') {
   const clientBuildPath = path.join(__dirname, '../../client/dist');
-  app.use(express.static(clientBuildPath));
+  console.log('📁 Serving static files from:', clientBuildPath);
+  
+  // Serve static files with proper cache headers
+  app.use(express.static(clientBuildPath, {
+    maxAge: '1d',
+    etag: true,
+    lastModified: true
+  }));
 
-  // Handle React routing - return index.html for any unknown routes
+  // Handle React routing - return index.html for any non-API routes
+  // This MUST be after all API routes
   app.get('*', (req, res) => {
-    res.sendFile(path.join(clientBuildPath, 'index.html'));
+    console.log('🔄 Catch-all route hit for:', req.path);
+    const indexPath = path.join(clientBuildPath, 'index.html');
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error('❌ Error sending index.html:', err);
+        res.status(500).send('Error loading application');
+      }
+    });
   });
+  
+  console.log('✅ SPA routing configured - all non-API routes will serve index.html');
 }
 
 const server = http.createServer(app);
