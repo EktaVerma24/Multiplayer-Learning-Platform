@@ -5,7 +5,6 @@ const canvasStates = {};
 
 // Track peers per classroom for WebRTC
 const roomPeers = new Map();
-const userInfo = new Map();
 const userIdToSocketId = new Map();
 
 export const setupSocket = (server) => {
@@ -13,8 +12,7 @@ export const setupSocket = (server) => {
     cors: {
       origin: [
         process.env.CLIENT_URL || "http://localhost:5173",
-        "https://edubridge-2x2o.onrender.com",
-        "http://localhost:5173"
+        "https://edubridge-2x2c.onrender.com",
       ].filter(Boolean),
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       credentials: true,
