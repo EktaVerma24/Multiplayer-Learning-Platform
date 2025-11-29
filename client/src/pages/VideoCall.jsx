@@ -1,14 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import io from "socket.io-client";
-import { FaPhone, FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaDesktop, FaShareSquare, FaPhoneSlash, FaClosedCaptioning } from 'react-icons/fa'; // Removed FaSun, FaMoon
-import { motion } from "framer-motion"; // Import motion for animations
-
-const socket = io(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000", {
-  transports: ["websocket", "polling"],
-  withCredentials: true,
-});
+import { FaPhone, FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaDesktop, FaShareSquare, FaPhoneSlash, FaClosedCaptioning } from 'react-icons/fa';
+import { motion } from "framer-motion";
+import { useSocket } from '../context/SocketContext';
 
 export default function VideoCall({classroomId}) {
+  const { socket } = useSocket();
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const pcRef = useRef(null);
@@ -28,6 +24,8 @@ export default function VideoCall({classroomId}) {
   const speechRecognitionRef = useRef(null);
 
   useEffect(() => {
+    if (!socket) return;
+
     socket.emit("joinClassroom", { classroomId });
 
     socket.on("webrtc:incoming-call", ({ from, offer }) => {

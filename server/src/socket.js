@@ -171,6 +171,18 @@ export const setupSocket = (server) => {
   socket.to(classroomId).emit("webrtc:ice-candidate", { from: socket.id, candidate });
 });
 
+    // ✅ Hangup: notify other peer that call ended
+    socket.on("webrtc:hangup", ({ classroomId }) => {
+      if (!classroomId) return;
+      socket.to(classroomId).emit("webrtc:hangup", { from: socket.id });
+      console.log(`📞 User ${socket.id} hung up in room ${classroomId}`);
+    });
+
+    // ✅ Caption: broadcast live captions to other peers
+    socket.on("webrtc:caption", ({ classroomId, text }) => {
+      if (!classroomId || !text) return;
+      socket.to(classroomId).emit("webrtc:caption", { from: socket.id, text });
+    });
 
     // ------------------- DISCONNECT / LEAVE -------------------
     const handleLeave = () => {
