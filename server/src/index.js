@@ -64,19 +64,24 @@ if (process.env.NODE_ENV === 'production') {
   // Handle React routing - return index.html for any non-API routes
   // This MUST be after all API routes
   app.use((req, res, next) => {
-    // Only handle GET requests that haven't been handled by other routes
-    if (req.method === 'GET') {
-      console.log('🔄 Catch-all route hit for:', req.path);
+    // Skip if it's an API request or already handled
+    if (req.path.startsWith('/api') || res.headersSent) {
+      return next();
+    }
+    
+    // Only handle GET requests for HTML pages
+    if (req.method === 'GET' && !req.path.includes('.')) {
+      console.log('🔄 Serving index.html for:', req.path);
       const indexPath = path.join(clientBuildPath, 'index.html');
-      res.sendFile(indexPath, (err) => {
+      return res.sendFile(indexPath, (err) => {
         if (err) {
           console.error('❌ Error sending index.html:', err);
           res.status(500).send('Error loading application');
         }
       });
-    } else {
-      next();
     }
+    
+    next();
   });
   
   console.log('✅ SPA routing configured - all non-API routes will serve index.html');
