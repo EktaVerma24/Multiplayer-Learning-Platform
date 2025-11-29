@@ -63,7 +63,7 @@ if (process.env.NODE_ENV === 'production') {
 
   // Handle React routing - return index.html for any non-API routes
   // This MUST be after all API routes
-  app.get('*', (req, res) => {
+  app.get('/*', (req, res) => {
     console.log('🔄 Catch-all route hit for:', req.path);
     const indexPath = path.join(clientBuildPath, 'index.html');
     res.sendFile(indexPath, (err) => {
