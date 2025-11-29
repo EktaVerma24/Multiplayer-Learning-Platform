@@ -51,7 +51,16 @@ app.use('/api/analytics', analyticsRoutes);
 
 // Serve static files from the React app in production
 if (process.env.NODE_ENV === 'production') {
-  const clientBuildPath = path.join(__dirname, '../../client/dist');
+  // Try multiple possible paths for the client build
+  let clientBuildPath = path.join(__dirname, '../../client/dist');
+  
+  // Check if running on Render (where build is copied to server/client/dist)
+  const renderPath = path.join(__dirname, '../client/dist');
+  const fs = await import('fs');
+  if (fs.existsSync(renderPath)) {
+    clientBuildPath = renderPath;
+  }
+  
   console.log('📁 Serving static files from:', clientBuildPath);
   
   // Serve static files with proper cache headers
