@@ -11,10 +11,17 @@ const userIdToSocketId = new Map();
 export const setupSocket = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL || "http://localhost:5173",
-      methods: ["GET", "POST"],
+      origin: [
+        process.env.CLIENT_URL || "http://localhost:5173",
+        "https://edubridge-2x2o.onrender.com",
+        "http://localhost:5173"
+      ].filter(Boolean),
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       credentials: true,
+      allowedHeaders: ["Content-Type", "Authorization"],
     },
+    allowEIO3: true,
+    transports: ["websocket", "polling"],
   });
 
   io.on("connection", (socket) => {
