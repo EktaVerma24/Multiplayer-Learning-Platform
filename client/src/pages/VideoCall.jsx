@@ -44,7 +44,9 @@ export default function VideoCall({classroomId, user}) {
         setClassroomName("Video Call");
       }
     };
-    if (classroomId) fetchClassroom();
+    if (classroomId) {
+      fetchClassroom();
+    }
   }, [classroomId]);
 
   useEffect(() => {
@@ -158,7 +160,6 @@ export default function VideoCall({classroomId, user}) {
       return;
     }
 
-    console.log("📞 Starting call in room:", classroomId);
     
     if (!socket) {
       alert("Socket not connected. Please refresh the page.");
@@ -169,25 +170,20 @@ export default function VideoCall({classroomId, user}) {
       setIsCaller(true);
       setIsInCall(true);
       
-      console.log("🔗 Creating peer connection...");
       createPeerConnection();
       
       if (!pcRef.current) {
         throw new Error("Failed to create peer connection");
       }
       
-      console.log("🎥 Enabling camera and mic...");
       await enableCameraAndMic();
       
-      console.log("📝 Creating offer...");
       const offer = await pcRef.current.createOffer();
       await pcRef.current.setLocalDescription(offer);
       
-      console.log("📤 Sending offer to room:", classroomId);
       socket.emit("webrtc:offer", { classroomId, offer, to: null });
-      console.log("✅ Call started successfully");
+
     } catch (error) {
-      console.error("❌ Error starting call:", error);
       setIsInCall(false);
       setIsCaller(false);
       alert("Failed to start call: " + error.message);
@@ -195,7 +191,6 @@ export default function VideoCall({classroomId, user}) {
   };
 
   const answerCall = async () => {
-    console.log("📞 Answering call from:", callerId);
     try {
       setIncomingCall(false);
       setShowIncomingNotification(false);
@@ -205,25 +200,20 @@ export default function VideoCall({classroomId, user}) {
       if (!pcRef.current) createPeerConnection();
       
       // Enable camera/mic FIRST so tracks are added to peer connection
-      console.log("🎥 Enabling camera and mic BEFORE setting remote description");
       await enableCameraAndMic();
       
       // Set remote description from the offer
-      console.log("📥 Setting remote description from offer");
       await pcRef.current.setRemoteDescription(new RTCSessionDescription(pcRef.current.remoteOffer));
       
       // Add any pending ICE candidates
-      console.log("🧊 Adding pending ICE candidates:", pendingCandidates.current.length);
       for (const c of pendingCandidates.current) {
         await pcRef.current.addIceCandidate(new RTCIceCandidate(c));
       }
       pendingCandidates.current = [];
 
       // Now create and send the answer with tracks included
-      console.log("📝 Creating answer with tracks");
       const answer = await pcRef.current.createAnswer();
       await pcRef.current.setLocalDescription(answer);
-      console.log("📤 Sending answer with", pcRef.current.getSenders().length, "senders");
       socket.emit("webrtc:answer", { classroomId, answer, to: callerId });
     } catch (error) {
       console.error("❌ Error answering call:", error);
@@ -483,7 +473,7 @@ export default function VideoCall({classroomId, user}) {
         </div>
         <div className="flex items-center gap-3">
           <div className="px-3 py-1.5 bg-violet-100 rounded-full text-violet-700 font-medium text-sm">
-            {sTeacher ? 'Teacher' : 'Student'}
+            {isTeacher ? 'Teacher' : 'Student'}
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
