@@ -97,9 +97,18 @@ export default function VideoCall({classroomId, user}) {
     };
 
     pcRef.current.ontrack = (event) => {
-      console.log("🎥 Remote stream added");
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.streams[0];
+      console.log("🎥 Remote stream added - Track kind:", event.track.kind);
+      console.log("📺 Remote streams:", event.streams.length);
+      if (event.streams && event.streams[0]) {
+        console.log("✅ Setting remote video srcObject");
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = event.streams[0];
+          console.log("✅ Remote video element updated");
+        } else {
+          console.error("❌ remoteVideoRef.current is null");
+        }
+      } else {
+        console.error("❌ No streams in ontrack event");
       }
     };
 
@@ -154,20 +163,36 @@ export default function VideoCall({classroomId, user}) {
       setIncomingCall(false);
       setShowIncomingNotification(false);
       setIsInCall(true);
+      
+      // Create peer connection if not exists
       if (!pcRef.current) createPeerConnection();
+      
+      // Enable camera/mic FIRST so tracks are added to peer connection
+      console.log("🎥 Enabling camera and mic BEFORE setting remote description");
+      await enableCameraAndMic();
+      
+      // Set remote description from the offer
+      console.log("📥 Setting remote description from offer");
       await pcRef.current.setRemoteDescription(new RTCSessionDescription(pcRef.current.remoteOffer));
-      pendingCandidates.current.forEach(async (c) => {
+      
+      // Add any pending ICE candidates
+      console.log("🧊 Adding pending ICE candidates:", pendingCandidates.current.length);
+      for (const c of pendingCandidates.current) {
         await pcRef.current.addIceCandidate(new RTCIceCandidate(c));
-      });
+      }
       pendingCandidates.current = [];
 
+      // Now create and send the answer with tracks included
+      console.log("📝 Creating answer with tracks");
       const answer = await pcRef.current.createAnswer();
       await pcRef.current.setLocalDescription(answer);
-      console.log("📤 Sending answer:", answer);
+      console.log("📤 Sending answer with", pcRef.current.getSenders().length, "senders");
       socket.emit("webrtc:answer", { classroomId, answer, to: callerId });
-      await enableCameraAndMic();
     } catch (error) {
       console.error("❌ Error answering call:", error);
+      setIsInCall(false);
+      setIncomingCall(true);
+      setShowIncomingNotification(true);
       alert("Failed to answer call: " + error.message);
     }
   };
@@ -208,12 +233,13 @@ export default function VideoCall({classroomId, user}) {
           console.log("✅ Local video element updated");
         }
         
-        localStream.getTracks().forEach((track) => {
-          console.log("➕ Adding track:", track.kind, track.label);
-          if (pcRef.current) {
+        // Add tracks to peer connection if it exists
+        if (pcRef.current) {
+          localStream.getTracks().forEach((track) => {
+            console.log("➕ Adding track to peer connection:", track.kind, track.label);
             pcRef.current.addTrack(track, localStream);
-          }
-        });
+          });
+        }
         
         // Set camera/mic state based on available tracks
         const hasVideo = localStream.getVideoTracks().length > 0;
@@ -246,10 +272,19 @@ export default function VideoCall({classroomId, user}) {
         throw error;
       }
     } else {
+      // Stream already exists, just enable tracks
       stream.getVideoTracks().forEach((track) => (track.enabled = true));
       stream.getAudioTracks().forEach((track) => (track.enabled = true));
       setCameraOn(true);
       setMicOn(true);
+      
+      // Ensure tracks are added to peer connection if not already
+      if (pcRef.current && pcRef.current.getSenders().length === 0) {
+        console.log("➕ Adding existing stream tracks to peer connection");
+        stream.getTracks().forEach((track) => {
+          pcRef.current.addTrack(track, stream);
+        });
+      }
     }
   };
 
