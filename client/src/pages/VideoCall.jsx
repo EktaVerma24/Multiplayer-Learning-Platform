@@ -145,6 +145,18 @@ export default function VideoCall({classroomId, user}) {
       }
     };
 
+    pcRef.current.onnegotiationneeded = async () => {
+      try {
+        console.log("🔄 Negotiation needed - creating new offer");
+        const offer = await pcRef.current.createOffer();
+        await pcRef.current.setLocalDescription(offer);
+        socket.emit("webrtc:offer", { classroomId, offer, to: null });
+        console.log("✅ Renegotiation offer sent");
+      } catch (err) {
+        console.error("❌ Error during renegotiation:", err);
+      }
+    };
+
     pcRef.current.onconnectionstatechange = () => {
       console.log("PC state:", pcRef.current.connectionState);
       if (pcRef.current.connectionState === 'disconnected' || pcRef.current.connectionState === 'failed' || pcRef.current.connectionState === 'closed') {
@@ -337,16 +349,23 @@ export default function VideoCall({classroomId, user}) {
   const shareScreen = async () => {
     if (!screenSharing) {
       try {
+        console.log("📺 Starting screen share...");
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         const screenTrack = screenStream.getVideoTracks()[0];
+        console.log("✅ Screen track obtained:", screenTrack.label);
+        
         const sender = pcRef.current?.getSenders().find((s) => s.track?.kind === "video");
+        console.log("🔍 Video sender found:", !!sender);
 
         if (sender) {
+          console.log("🔄 Replacing camera track with screen track...");
           await sender.replaceTrack(screenTrack);
+          console.log("✅ Track replaced successfully");
           setScreenSharing(true);
           
           // Notify remote peer about screen sharing
           socket.emit("webrtc:screen-share-status", { classroomId, isSharing: true });
+          console.log("📡 Screen share status sent to remote peer");
           
           screenTrack.onended = async () => {
             console.log("📺 Screen sharing ended by user");
