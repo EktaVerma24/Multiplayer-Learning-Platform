@@ -184,6 +184,12 @@ export const setupSocket = (server) => {
       socket.to(classroomId).emit("webrtc:caption", { from: socket.id, text });
     });
 
+    socket.on("webrtc:screen-share-status", ({ classroomId, isSharing }) => {
+      if (!classroomId) return;
+      socket.to(classroomId).emit("webrtc:screen-share-status", { from: socket.id, isSharing });
+      console.log(`📺 User ${socket.id} ${isSharing ? 'started' : 'stopped'} screen sharing in room ${classroomId}`);
+    });
+
     // ------------------- DISCONNECT / LEAVE -------------------
     const handleLeave = () => {
       const classroomId = socket.data.classroomId;
