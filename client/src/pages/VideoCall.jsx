@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { FaPhone, FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaDesktop, FaShareSquare, FaPhoneSlash, FaClosedCaptioning } from 'react-icons/fa';
 import { motion, AnimatePresence } from "framer-motion";
 import { useSocket } from '../context/SocketContext';
+import API from '../api/axios.js';
 
 export default function VideoCall({classroomId, user}) {
   const { socket } = useSocket();
@@ -23,9 +24,28 @@ export default function VideoCall({classroomId, user}) {
   const [captionText, setCaptionText] = useState("");
   const [isCaptioning, setIsCaptioning] = useState(false);
   const speechRecognitionRef = useRef(null);
+  const [classroomName, setClassroomName] = useState("");
+  
+  // Draggable local video position
+  const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
+  const dragRef = useRef(null);
 
   // Check if current user is teacher
   const isTeacher = user?.role === 'teacher';
+
+  // Fetch classroom name
+  useEffect(() => {
+    const fetchClassroom = async () => {
+      try {
+        const res = await API.get(`/classrooms/${classroomId}`);
+        setClassroomName(res.data.name || "Classroom");
+      } catch (err) {
+        console.error("Failed to fetch classroom:", err);
+        setClassroomName("Video Call");
+      }
+    };
+    if (classroomId) fetchClassroom();
+  }, [classroomId]);
 
   useEffect(() => {
     if (!socket) {
@@ -452,52 +472,68 @@ export default function VideoCall({classroomId, user}) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen font-sans overflow-hidden bg-gradient-to-br from-slate-50 to-violet-50 text-slate-800">
-      {/* Header with Title and Room ID */}
-      <div className="flex justify-between items-center p-4 shadow-lg bg-white/90 backdrop-blur-sm">
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-          Video Call
-        </h1>
-        <div className="flex items-center gap-4">
-          <div className="px-4 py-2 bg-violet-100 rounded-full text-violet-700 font-semibold">
-            {isTeacher ? '👨‍🏫 Teacher' : '👨‍🎓 Student'}
+    <div className="flex flex-col min-h-screen font-sans overflow-hidden bg-white text-slate-800">
+      {/* Header with Title and Classroom Info */}
+      <div className="flex justify-between items-center p-4 shadow-lg bg-white border-b border-slate-200">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+            {classroomName || "Video Call"}
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">Live Video Session</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="px-3 py-1.5 bg-violet-100 rounded-full text-violet-700 font-medium text-sm">
+            {sTeacher ? 'Teacher' : 'Student'}
           </div>
-          <div className="text-lg text-slate-600 bg-slate-100 px-4 py-2 rounded-full font-mono">
-            Room: {classroomId}
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-sm text-slate-600 font-medium">Connected</span>
           </div>
         </div>
       </div>
 
       {/* Main Video Grid - Dynamic Layout based on screen sharing */}
-      <div className="flex-1 p-6 sm:p-8">
+      <div className="flex-1 p-6 sm:p-8 relative">
         {remoteScreenSharing ? (
-          // Screen sharing layout: Large remote screen + small local video
-          <div className="h-full flex flex-col gap-4">
+          <>
             {/* Large Remote Screen */}
-            <div className="flex-1 relative rounded-xl overflow-hidden border-4 border-violet-300 shadow-2xl bg-slate-900">
+            <div className="h-full relative rounded-lg overflow-hidden border-2 border-slate-200 shadow-xl bg-slate-900">
               <video
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
                 className="w-full h-full object-contain"
               />
-              <div className="absolute top-4 left-4 bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 py-2 rounded-full font-semibold shadow-lg flex items-center gap-2">
+              <div className="absolute top-4 left-4 bg-violet-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg flex items-center gap-2">
                 <FaDesktop className="animate-pulse" />
-                Teacher's Screen
+                {isTeacher ? "Student's" : "Teacher's"} Screen
               </div>
               {captionText && (
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-lg px-6 py-3 rounded-2xl max-w-3xl text-center backdrop-blur-sm border border-white/20"
+                  className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-base px-6 py-3 rounded-lg max-w-3xl text-center backdrop-blur-sm"
                 >
                   {captionText}
                 </motion.div>
               )}
             </div>
             
-            {/* Small Local Video */}
-            <div className="h-48 relative rounded-xl overflow-hidden border-2 border-slate-300 shadow-xl bg-slate-900">
+            {/* Draggable Small Local Video (Bottom Right) */}
+            <motion.div
+              ref={dragRef}
+              drag
+              dragMomentum={false}
+              dragElastic={0}
+              dragConstraints={{
+                top: -window.innerHeight * 0.6,
+                left: -window.innerWidth * 0.7,
+                right: 0,
+                bottom: 0,
+              }}
+              className="absolute bottom-6 right-6 w-64 h-48 rounded-lg overflow-hidden border-2 border-violet-500 shadow-2xl bg-slate-900 cursor-move z-10"
+              whileHover={{ scale: 1.02, borderColor: "rgb(139, 92, 246)" }}
+            >
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -505,30 +541,35 @@ export default function VideoCall({classroomId, user}) {
                 playsInline
                 className="w-full h-full object-cover"
               />
-              <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm">
-                You
+              <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
+                You (Drag to move)
               </div>
-            </div>
-          </div>
+              <div className="absolute bottom-2 right-2 bg-violet-600/90 text-white text-xs px-2 py-1 rounded">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+                </svg>
+              </div>
+            </motion.div>
+          </>
         ) : (
           // Normal layout: Equal sized videos
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
             {/* Remote Stream */}
-            <div className="relative w-full h-full rounded-xl overflow-hidden border-2 border-violet-200 shadow-xl bg-slate-900">
+            <div className="relative w-full h-full rounded-lg overflow-hidden border-2 border-slate-200 shadow-xl bg-slate-900 hover:border-violet-300 transition-colors">
               <video
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
                 className="w-full h-full object-cover"
               />
-              <div className="absolute bottom-3 left-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 py-2 rounded-full font-semibold shadow-lg">
-                {isTeacher ? '👨‍🎓 Student' : '👨‍🏫 Teacher'}
+              <div className="absolute bottom-3 left-3 bg-violet-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg">
+                {isTeacher ? 'Student' : 'Teacher'}
               </div>
               {captionText && (
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-black/80 text-white text-lg px-6 py-3 rounded-2xl max-w-xl text-center backdrop-blur-sm border border-white/20"
+                  className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-black/80 text-white text-base px-6 py-3 rounded-lg max-w-xl text-center backdrop-blur-sm"
                 >
                   {captionText}
                 </motion.div>
@@ -536,7 +577,7 @@ export default function VideoCall({classroomId, user}) {
             </div>
 
             {/* Local Stream */}
-            <div className="relative w-full h-full rounded-xl overflow-hidden border-2 border-slate-200 shadow-xl bg-slate-900">
+            <div className="relative w-full h-full rounded-lg overflow-hidden border-2 border-slate-200 shadow-xl bg-slate-900 hover:border-slate-300 transition-colors">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -544,7 +585,7 @@ export default function VideoCall({classroomId, user}) {
                 playsInline
                 className="w-full h-full object-cover"
               />
-              <div className="absolute bottom-3 left-3 bg-black/60 text-white px-4 py-2 rounded-full font-semibold backdrop-blur-sm">
+              <div className="absolute bottom-3 left-3 bg-slate-700 text-white px-4 py-2 rounded-lg font-semibold">
                 You
               </div>
             </div>
@@ -552,22 +593,23 @@ export default function VideoCall({classroomId, user}) {
         )}
       </div>
 
-      {/* Floating Control Bar */}
-      <div className="p-6 shadow-2xl flex justify-center items-center gap-6 bg-white/95 backdrop-blur-md border-t border-violet-100">
+      {/* Control Bar */}
+      <div className="p-6 shadow-lg flex justify-center items-center gap-6 bg-white border-t border-slate-200">
         {/* Start Call Button - Only for Teachers */}
         {!isInCall && !incomingCall && isTeacher && (
           <motion.button 
             onClick={startCall} 
-            className="p-5 bg-gradient-to-r from-violet-600 to-purple-600 rounded-full text-white shadow-2xl hover:shadow-violet-400/50"
+            className="p-4 bg-violet-600 rounded-full text-white shadow-lg hover:bg-violet-700"
             {...motionButtonProps}
           >
-            <FaPhone size={24} />
+            <FaPhone size={20} />
           </motion.button>
         )}
 
         {/* Message for students when no call */}
         {!isInCall && !incomingCall && !isTeacher && (
-          <div className="text-slate-500 text-lg font-medium">
+          <div className="text-slate-500 text-base font-medium flex items-center gap-2">
+            <div className="w-2 h-2 bg-slate-400 rounded-full animate-pulse"></div>
             Waiting for teacher to start the call...
           </div>
         )}
@@ -577,17 +619,17 @@ export default function VideoCall({classroomId, user}) {
           <>
             <motion.button 
               onClick={answerCall} 
-              className="p-5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full text-white shadow-2xl hover:shadow-green-400/50"
+              className="p-4 bg-green-600 rounded-full text-white shadow-lg hover:bg-green-700"
               {...motionButtonProps}
             >
-              <FaPhone size={24} />
+              <FaPhone size={20} />
             </motion.button>
             <motion.button 
               onClick={() => hangUpCall(true)} 
-              className="p-5 bg-gradient-to-r from-red-500 to-rose-600 rounded-full text-white shadow-2xl hover:shadow-red-400/50"
+              className="p-4 bg-red-600 rounded-full text-white shadow-lg hover:bg-red-700"
               {...motionButtonProps}
             >
-              <FaPhoneSlash size={24} />
+              <FaPhoneSlash size={20} />
             </motion.button>
           </>
         )}
@@ -597,104 +639,101 @@ export default function VideoCall({classroomId, user}) {
           <>
             <motion.button 
               onClick={toggleMic} 
-              className={`p-5 rounded-full shadow-2xl ${micOn ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:shadow-violet-400/50' : 'bg-slate-700 hover:shadow-slate-500/50'} text-white`}
+              className={`p-4 rounded-full shadow-lg ${micOn ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-700 hover:bg-slate-600'} text-white`}
               {...motionButtonProps}
             >
-              {micOn ? <FaMicrophone size={24} /> : <FaMicrophoneSlash size={24} />}
+              {micOn ? <FaMicrophone size={20} /> : <FaMicrophoneSlash size={20} />}
             </motion.button>
 
             <motion.button 
               onClick={toggleCamera} 
-              className={`p-5 rounded-full shadow-2xl ${cameraOn ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:shadow-violet-400/50' : 'bg-slate-700 hover:shadow-slate-500/50'} text-white`}
+              className={`p-4 rounded-full shadow-lg ${cameraOn ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-700 hover:bg-slate-600'} text-white`}
               {...motionButtonProps}
             >
-              {cameraOn ? <FaVideo size={24} /> : <FaVideoSlash size={24} />}
+              {cameraOn ? <FaVideo size={20} /> : <FaVideoSlash size={20} />}
             </motion.button>
 
             {isTeacher && (
               <motion.button 
                 onClick={shareScreen} 
-                className={`p-5 rounded-full shadow-2xl ${screenSharing ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:shadow-violet-400/50' : 'bg-slate-700 hover:shadow-slate-500/50'} text-white`}
+                className={`p-4 rounded-full shadow-lg ${screenSharing ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-700 hover:bg-slate-600'} text-white`}
                 {...motionButtonProps}
               >
-                {screenSharing ? <FaShareSquare size={24} /> : <FaDesktop size={24} />}
+                {screenSharing ? <FaShareSquare size={20} /> : <FaDesktop size={20} />}
               </motion.button>
             )}
             
             <motion.button 
               onClick={toggleCaptioning} 
-              className={`p-5 rounded-full shadow-2xl ${isCaptioning ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:shadow-violet-400/50' : 'bg-slate-700 hover:shadow-slate-500/50'} text-white`}
+              className={`p-4 rounded-full shadow-lg ${isCaptioning ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-700 hover:bg-slate-600'} text-white`}
               {...motionButtonProps}
             >
-              <FaClosedCaptioning size={24} />
+              <FaClosedCaptioning size={20} />
             </motion.button>
 
             <motion.button 
               onClick={() => hangUpCall(true)} 
-              className="p-5 bg-gradient-to-r from-red-500 to-rose-600 rounded-full text-white shadow-2xl hover:shadow-red-400/50"
+              className="p-4 bg-red-600 rounded-full text-white shadow-lg hover:bg-red-700"
               {...motionButtonProps}
             >
-              <FaPhoneSlash size={24} />
+              <FaPhoneSlash size={20} />
             </motion.button>
           </>
         )}
       </div>
 
-      {/* Enhanced Incoming Call Notification */}
+      {/* Incoming Call Notification */}
       <AnimatePresence>
         {showIncomingNotification && !isInCall && (
           <motion.div 
-            initial={{ opacity: 0, scale: 0.8, y: -100 }}
+            initial={{ opacity: 0, scale: 0.9, y: -50 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: -100 }}
-            transition={{ 
-              type: "spring", 
-              stiffness: 300, 
-              damping: 20 
-            }}
-            className="fixed top-8 right-8 bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 text-white p-6 rounded-2xl shadow-2xl border-2 border-white/30 backdrop-blur-md max-w-sm z-50"
+            exit={{ opacity: 0, scale: 0.9, y: -50 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="fixed top-6 right-6 bg-white p-6 rounded-xl shadow-2xl border border-slate-200 max-w-sm z-50"
           >
-            <div className="flex items-center gap-4 mb-3">
+            <div className="flex items-start gap-4 mb-4">
               <motion.div 
-                animate={{ scale: [1, 1.2, 1] }}
+                animate={{ scale: [1, 1.1, 1] }}
                 transition={{ repeat: Infinity, duration: 1.5 }}
-                className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center"
+                className="w-14 h-14 bg-violet-100 rounded-full flex items-center justify-center flex-shrink-0"
               >
-                <FaPhone size={28} className="text-white" />
+                <FaPhone size={24} className="text-violet-600" />
               </motion.div>
-              <div>
-                <p className="font-bold text-2xl">Incoming Call</p>
-                <p className="text-white/90 text-sm">from Teacher</p>
+              <div className="flex-1">
+                <p className="font-bold text-xl text-slate-900">Incoming Call</p>
+                <p className="text-slate-600 text-sm mt-1">Teacher is calling...</p>
               </div>
             </div>
             
-            <div className="flex gap-3 mt-4">
+            <div className="flex gap-3">
               <motion.button
                 onClick={answerCall}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg shadow-md flex items-center justify-center gap-2 transition"
               >
-                <FaPhone size={18} />
+                <FaPhone size={16} />
                 Answer
               </motion.button>
               <motion.button
                 onClick={() => hangUpCall(true)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg shadow-md flex items-center justify-center gap-2 transition"
               >
-                <FaPhoneSlash size={18} />
+                <FaPhoneSlash size={16} />
                 Decline
               </motion.button>
             </div>
             
             <motion.div 
-              className="mt-3 text-center text-xs text-white/80"
+              className="mt-3 text-center text-xs text-slate-500 flex items-center justify-center gap-2"
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ repeat: Infinity, duration: 2 }}
             >
-              🔔 Ringing...
+              <div className="w-2 h-2 bg-violet-500 rounded-full"></div>
+              Ringing
             </motion.div>
           </motion.div>
         )}
