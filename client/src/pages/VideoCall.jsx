@@ -58,14 +58,32 @@ export default function VideoCall({classroomId, user}) {
     console.log("✅ VideoCall: Socket connected, joining classroom:", classroomId);
     socket.emit("joinClassroom", { classroomId, user });
 
-    socket.on("webrtc:incoming-call", ({ from, offer }) => {
-      console.log("📞 Incoming call from:", from);
-      setIncomingCall(true);
-      setCallerId(from);
-      setShowIncomingNotification(true);
+    socket.on("webrtc:incoming-call", async ({ from, offer }) => {
+      console.log("📞 Incoming call/renegotiation from:", from);
+      
+      // Check if this is a renegotiation (already in call) or a new call
+      if (isInCall && pcRef.current) {
+        // This is a renegotiation (e.g., screen sharing started)
+        console.log("🔄 Handling renegotiation offer");
+        try {
+          await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+          const answer = await pcRef.current.createAnswer();
+          await pcRef.current.setLocalDescription(answer);
+          socket.emit("webrtc:answer", { classroomId, answer, to: from });
+          console.log("✅ Renegotiation answer sent");
+        } catch (err) {
+          console.error("❌ Error handling renegotiation:", err);
+        }
+      } else {
+        // This is a new incoming call
+        console.log("📞 New incoming call");
+        setIncomingCall(true);
+        setCallerId(from);
+        setShowIncomingNotification(true);
 
-      if (!pcRef.current) createPeerConnection();
-      pcRef.current.remoteOffer = offer;
+        if (!pcRef.current) createPeerConnection();
+        pcRef.current.remoteOffer = offer;
+      }
     });
 
     socket.on("webrtc:answer", async ({ from, answer }) => {
@@ -147,6 +165,13 @@ export default function VideoCall({classroomId, user}) {
 
     pcRef.current.onnegotiationneeded = async () => {
       try {
+        // Only handle renegotiation if we already have a remote description
+        // This prevents firing during initial call setup
+        if (!pcRef.current.remoteDescription) {
+          console.log("⏭️ Skipping negotiation - no remote description yet");
+          return;
+        }
+        
         console.log("🔄 Negotiation needed - creating new offer");
         const offer = await pcRef.current.createOffer();
         await pcRef.current.setLocalDescription(offer);
