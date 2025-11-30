@@ -339,7 +339,7 @@ export default function VideoCall({classroomId, user}) {
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         const screenTrack = screenStream.getVideoTracks()[0];
-        const sender = pcRef.current.getSenders().find((s) => s.track?.kind === "video");
+        const sender = pcRef.current?.getSenders().find((s) => s.track?.kind === "video");
 
         if (sender) {
           await sender.replaceTrack(screenTrack);
@@ -348,10 +348,20 @@ export default function VideoCall({classroomId, user}) {
           // Notify remote peer about screen sharing
           socket.emit("webrtc:screen-share-status", { classroomId, isSharing: true });
           
-          screenTrack.onended = () => {
-            const currentSender = pcRef.current.getSenders().find((s) => s.track?.kind === "video");
-            if (currentSender && stream) {
-              currentSender.replaceTrack(stream.getVideoTracks()[0]);
+          screenTrack.onended = async () => {
+            console.log("📺 Screen sharing ended by user");
+            // Revert to camera when screen share stops
+            if (pcRef.current && stream) {
+              const currentSender = pcRef.current.getSenders().find((s) => s.track?.kind === "video");
+              const videoTrack = stream.getVideoTracks()[0];
+              if (currentSender && videoTrack) {
+                try {
+                  await currentSender.replaceTrack(videoTrack);
+                  console.log("✅ Reverted to camera successfully");
+                } catch (err) {
+                  console.error("❌ Failed to revert to camera:", err);
+                }
+              }
             }
             setScreenSharing(false);
             socket.emit("webrtc:screen-share-status", { classroomId, isSharing: false });
@@ -361,14 +371,27 @@ export default function VideoCall({classroomId, user}) {
         }
       } catch (err) {
         console.error("Screen share failed:", err);
+        // Don't change state if user cancelled
+        if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+          alert("Failed to share screen: " + err.message);
+        }
       }
     } else {
-      const sender = pcRef.current.getSenders().find((s) => s.track?.kind === "video");
-      if (sender && stream) {
-        await sender.replaceTrack(stream.getVideoTracks()[0]);
+      // Manually stopping screen share
+      try {
+        const sender = pcRef.current?.getSenders().find((s) => s.track?.kind === "video");
+        if (sender && stream) {
+          const videoTrack = stream.getVideoTracks()[0];
+          if (videoTrack) {
+            await sender.replaceTrack(videoTrack);
+            console.log("✅ Stopped screen sharing, reverted to camera");
+          }
+        }
+        setScreenSharing(false);
+        socket.emit("webrtc:screen-share-status", { classroomId, isSharing: false });
+      } catch (err) {
+        console.error("❌ Error stopping screen share:", err);
       }
-      setScreenSharing(false);
-      socket.emit("webrtc:screen-share-status", { classroomId, isSharing: false });
     }
   };
 
@@ -485,16 +508,17 @@ export default function VideoCall({classroomId, user}) {
       {/* Main Video Grid - Dynamic Layout based on screen sharing */}
       <div className="flex-1 p-6 sm:p-8 relative">
         {remoteScreenSharing ? (
+          // Screen sharing layout: Large remote screen + draggable small local video
           <>
             {/* Large Remote Screen */}
-            <div className="h-full relative rounded-lg overflow-hidden border-2 border-violet-300 shadow-2xl bg-black flex items-center justify-center">
+            <div className="h-full w-full relative rounded-lg overflow-hidden border-2 border-violet-300 shadow-2xl bg-slate-900">
               <video
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                className="max-w-full max-h-full w-auto h-auto object-contain"
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
-              <div className="absolute top-4 left-4 bg-violet-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg flex items-center gap-2">
+              <div className="absolute top-4 left-4 bg-violet-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg flex items-center gap-2 z-20">
                 <FaDesktop className="animate-pulse" />
                 {isTeacher ? "Student's" : "Teacher's"} Screen
               </div>
@@ -502,7 +526,7 @@ export default function VideoCall({classroomId, user}) {
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-base px-6 py-3 rounded-lg max-w-3xl text-center backdrop-blur-sm"
+                  className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-base px-6 py-3 rounded-lg max-w-3xl text-center backdrop-blur-sm z-20"
                 >
                   {captionText}
                 </motion.div>
@@ -514,30 +538,34 @@ export default function VideoCall({classroomId, user}) {
               ref={dragRef}
               drag
               dragMomentum={false}
-              dragElastic={0}
+              dragElastic={0.1}
               dragConstraints={{
-                top: -window.innerHeight * 0.6,
-                left: -window.innerWidth * 0.7,
-                right: 0,
-                bottom: 0,
+                top: -window.innerHeight * 0.5,
+                left: -window.innerWidth * 0.65,
+                right: 20,
+                bottom: 20,
               }}
-              className="absolute bottom-6 right-6 w-64 h-48 rounded-lg overflow-hidden border-2 border-violet-500 shadow-2xl bg-slate-900 cursor-move z-10"
-              whileHover={{ scale: 1.02, borderColor: "rgb(139, 92, 246)" }}
+              initial={{ x: 0, y: 0 }}
+              className="absolute bottom-6 right-6 w-80 h-60 rounded-xl overflow-hidden border-3 border-violet-500 shadow-2xl bg-slate-900 cursor-grab active:cursor-grabbing z-30"
+              whileHover={{ scale: 1.05, borderWidth: '4px' }}
+              whileDrag={{ scale: 1.1, boxShadow: "0 25px 50px -12px rgba(139, 92, 246, 0.5)" }}
             >
               <video
                 ref={localVideoRef}
                 autoPlay
                 muted
                 playsInline
-                className="w-full h-full object-cover"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
-              <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
-                You (Drag to move)
-              </div>
-              <div className="absolute bottom-2 right-2 bg-violet-600/90 text-white text-xs px-2 py-1 rounded">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                </svg>
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm font-medium">
+                  You (Drag to move)
+                </div>
+                <div className="absolute top-2 right-2 bg-violet-600 text-white p-1.5 rounded-full">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                </div>
               </div>
             </motion.div>
           </>
@@ -550,16 +578,16 @@ export default function VideoCall({classroomId, user}) {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                className="w-full h-full object-cover"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
-              <div className="absolute bottom-3 left-3 bg-violet-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg">
-                {isTeacher ? 'Student' : 'Teacher'}
+              <div className="absolute bottom-3 left-3 bg-violet-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg z-10">
+                {isTeacher ? '👨‍🎓 Student' : '👨‍🏫 Teacher'}
               </div>
               {captionText && (
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-black/80 text-white text-base px-6 py-3 rounded-lg max-w-xl text-center backdrop-blur-sm"
+                  className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-black/80 text-white text-base px-6 py-3 rounded-lg max-w-xl text-center backdrop-blur-sm z-10"
                 >
                   {captionText}
                 </motion.div>
@@ -573,9 +601,9 @@ export default function VideoCall({classroomId, user}) {
                 autoPlay
                 muted
                 playsInline
-                className="w-full h-full object-cover"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
-              <div className="absolute bottom-3 left-3 bg-slate-700 text-white px-4 py-2 rounded-lg font-semibold">
+              <div className="absolute bottom-3 left-3 bg-slate-700 text-white px-4 py-2 rounded-lg font-semibold z-10">
                 You
               </div>
             </div>
