@@ -487,12 +487,12 @@ export default function VideoCall({classroomId, user}) {
         {remoteScreenSharing ? (
           <>
             {/* Large Remote Screen */}
-            <div className="h-full relative rounded-lg overflow-hidden border-2 border-slate-200 shadow-xl bg-slate-900">
+            <div className="h-full relative rounded-lg overflow-hidden border-2 border-violet-300 shadow-2xl bg-black flex items-center justify-center">
               <video
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                className="w-full h-full object-contain"
+                className="max-w-full max-h-full w-auto h-auto object-contain"
               />
               <div className="absolute top-4 left-4 bg-violet-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg flex items-center gap-2">
                 <FaDesktop className="animate-pulse" />
