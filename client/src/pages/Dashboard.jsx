@@ -94,8 +94,15 @@ export default function Dashboard({ user }) {
             await API.delete(`/classrooms/${id}`);
             // Re-fetch classrooms to update the list
             const classroomsRes = await API.get("/classrooms")
-            setClassrooms(classroomsRes.data);
-            // Enhanced success toast
+            // Sort classrooms: user's created classrooms first
+            const sortedClassrooms = classroomsRes.data.sort((a, b) => {
+                const aIsOwner = a.teacher?._id === user._id;
+                const bIsOwner = b.teacher?._id === user._id;
+                if (aIsOwner && !bIsOwner) return -1;
+                if (!aIsOwner && bIsOwner) return 1;
+                return 0;
+            });
+            setClassrooms(sortedClassrooms);
             toast.success(`Classroom "${name}" deleted successfully!`, {
                 icon: '🗑️',
                 style: {
@@ -166,11 +173,17 @@ export default function Dashboard({ user }) {
                     name: user.name,
                 };
             }
-            createdClassroom.students = createdClassroom.students || [];
+            createdClassroom.students = createdClassroom.students || [];
 
-            setClassrooms([createdClassroom, ...classrooms]);
-
-            setNewClassroomData({ name: "", description: "" });
+            // Add new classroom and sort to keep user's classrooms on top
+            const updatedClassrooms = [createdClassroom, ...classrooms].sort((a, b) => {
+                const aIsOwner = a.teacher?._id === user._id;
+                const bIsOwner = b.teacher?._id === user._id;
+                if (aIsOwner && !bIsOwner) return -1;
+                if (!aIsOwner && bIsOwner) return 1;
+                return 0;
+            });
+            setClassrooms(updatedClassrooms);            setNewClassroomData({ name: "", description: "" });
             setShowCreateModal(false);
             
             // Enhanced success toast for creation
