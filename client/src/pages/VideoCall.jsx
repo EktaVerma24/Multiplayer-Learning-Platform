@@ -11,6 +11,7 @@ export default function VideoCall({classroomId, user}) {
   const pcRef = useRef(null);
   const pendingCandidates = useRef([]);
   const isInCallRef = useRef(false);
+  const screenStreamRef = useRef(null);
 
   const [isCaller, setIsCaller] = useState(false);
   const [incomingCall, setIncomingCall] = useState(false);
@@ -193,6 +194,17 @@ export default function VideoCall({classroomId, user}) {
         console.log("📊 Stream has video tracks:", newStream.getVideoTracks().length);
         console.log("📊 Stream has audio tracks:", newStream.getAudioTracks().length);
         
+        // Unmute the track if it's muted (this is critical!)
+        if (event.track.kind === 'video' && event.track.muted) {
+          console.log("⚠️ Video track is muted, waiting for it to unmute...");
+          event.track.onunmute = () => {
+            console.log("✅ Video track unmuted!");
+            if (remoteVideoRef.current && remoteVideoRef.current.srcObject === newStream) {
+              remoteVideoRef.current.play().catch(err => console.warn("⚠️ Play error:", err));
+            }
+          };
+        }
+        
         if (remoteVideoRef.current) {
           const currentStream = remoteVideoRef.current.srcObject;
           
@@ -201,11 +213,14 @@ export default function VideoCall({classroomId, user}) {
           remoteVideoRef.current.srcObject = newStream;
           console.log("✅ Remote video element updated successfully");
           
-          // Force video to play
+          // Force video to play (even if muted, it should still show)
+          remoteVideoRef.current.muted = false; // Unmute the video element
           setTimeout(() => {
-            remoteVideoRef.current.play()
-              .then(() => console.log("✅ Remote video playing"))
-              .catch(err => console.warn("⚠️ Auto-play prevented:", err));
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.play()
+                .then(() => console.log("✅ Remote video playing"))
+                .catch(err => console.warn("⚠️ Auto-play prevented:", err));
+            }
           }, 100);
         } else {
           console.error("❌ remoteVideoRef.current is null");
@@ -462,12 +477,17 @@ export default function VideoCall({classroomId, user}) {
           await sender.replaceTrack(screenTrack);
           console.log("✅ Track replaced successfully - new track:", screenTrack.id);
           
+          // Store screen stream in ref to prevent garbage collection
+          screenStreamRef.current = screenStream;
+          
           // Update local video to show screen
           if (localVideoRef.current) {
             localVideoRef.current.srcObject = screenStream;
+            console.log("✅ Local video updated to show screen");
           }
           
           setScreenSharing(true);
+          console.log("✅ Screen sharing state set to true");
           
           // Notify remote peer about screen sharing
           socket.emit("webrtc:screen-share-status", { classroomId, isSharing: true });
@@ -485,6 +505,8 @@ export default function VideoCall({classroomId, user}) {
             console.log("✅ Screen share renegotiation offer sent");
           } catch (err) {
             console.error("❌ Failed to trigger renegotiation:", err);
+            // Don't stop screen sharing on renegotiation error
+            console.log("⚠️ Renegotiation failed but keeping screen share active");
           }
           
           screenTrack.onended = async () => {
@@ -508,6 +530,7 @@ export default function VideoCall({classroomId, user}) {
               }
             }
             setScreenSharing(false);
+            screenStreamRef.current = null;
             socket.emit("webrtc:screen-share-status", { classroomId, isSharing: false });
           };
         } else {
@@ -538,6 +561,7 @@ export default function VideoCall({classroomId, user}) {
           }
         }
         setScreenSharing(false);
+        screenStreamRef.current = null;
         socket.emit("webrtc:screen-share-status", { classroomId, isSharing: false });
       } catch (err) {
         console.error("❌ Error stopping screen share:", err);
