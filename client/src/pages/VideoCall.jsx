@@ -530,10 +530,8 @@ export default function VideoCall({classroomId, user}) {
       try {
         console.log("📺 Starting screen share...");
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
-          video: { 
-            cursor: "always",
-            displaySurface: "monitor"
-          } 
+          video: { cursor: "always" },
+          audio: false
         });
         const screenTrack = screenStream.getVideoTracks()[0];
         console.log("✅ Screen track obtained:", screenTrack.label, "ID:", screenTrack.id);
