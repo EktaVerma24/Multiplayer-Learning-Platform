@@ -47,8 +47,15 @@ export default function Dashboard({ user }) {
                     API.get("/classrooms"),
                     API.get(`/notes/${user._id}`)
                 ]);
-                setClassrooms(classroomsRes.data);
-                setNotes(notesRes.data);
+                // Sort classrooms: user's created classrooms first
+                const sortedClassrooms = classroomsRes.data.sort((a, b) => {
+                    const aIsOwner = a.teacher?._id === user._id;
+                    const bIsOwner = b.teacher?._id === user._id;
+                    if (aIsOwner && !bIsOwner) return -1;
+                    if (!aIsOwner && bIsOwner) return 1;
+                    return 0;
+                });
+                setClassrooms(sortedClassrooms);
             } catch (err) {
                 console.error("Failed to fetch initial data:", err);
                 setError("Could not load dashboard. Please try again.");
