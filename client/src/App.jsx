@@ -53,8 +53,8 @@ function App() {
     <Router>
       {user && <RouteAnalytics />}
       <Routes>
-        <Route path="/" element={<Login setUser={setUser} />} />
-        <Route path="/signup" element={<Signup />} />
+        <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Login setUser={setUser} />} />
+        <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <Signup />} />
 
         {/* 👇 All your protected routes are now clean and nested */}
         <Route element={<ProtectedRoute user={user} />}>
