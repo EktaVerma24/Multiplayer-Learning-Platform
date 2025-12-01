@@ -450,7 +450,7 @@ export default function Dashboard({ user }) {
                                                 </button>
                                                 )}
                                             </div>
-                                            {user.role === "teacher" && (
+                                            {user.role === "teacher" && cls?.teacher?._id === user?._id && (
                                                 <div className="mt-6 pt-4 border-t border-slate-200 flex flex-col sm:flex-row gap-3">
                                                     <button onClick={(e) => { e.stopPropagation(); goToCreateQuiz(cls._id); }} className="flex items-center justify-center w-full px-4 py-2 font-semibold text-sm text-white bg-violet-600 rounded-md hover:bg-violet-700 transition">
                                                         <QuizIcon /> Create Quiz
