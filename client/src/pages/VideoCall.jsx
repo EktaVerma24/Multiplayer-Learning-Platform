@@ -764,7 +764,10 @@ export default function VideoCall({classroomId, user}) {
           // Screen sharing layout: Large remote screen + draggable small local video
           <>
             {/* Large Remote Screen */}
-            <div className="h-full w-full relative rounded-lg overflow-hidden border-2 border-violet-300 shadow-2xl bg-slate-900">
+            <div
+              className="w-full relative rounded-lg overflow-hidden border-2 border-violet-300 shadow-2xl bg-slate-900"
+              style={{ minHeight: '65vh' }}
+            >
               <video
                 ref={remoteVideoRef}
                 autoPlay
