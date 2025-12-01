@@ -7,19 +7,23 @@ export default function Login({ setUser }) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setSubmitting(true);
+      setError(null);
       const res = await API.post("/auth/login", { email, password });
-      setUser(res.data.user);
-      localStorage.setItem("token", res.data.token);
+      const { token, user } = res.data;
+      localStorage.setItem("token", token);
+      API.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      setUser(user);
       navigate("/dashboard");
     } catch (err) {
       console.error(err);
-      alert(err?.response?.data?.message || "Login failed");
+      setError(err?.response?.data?.message || "Login failed");
     } finally {
       setSubmitting(false);
     }
@@ -35,6 +39,9 @@ export default function Login({ setUser }) {
           </div>
 
           <form onSubmit={handleSubmit} className="px-6 pb-6 pt-4">
+            <div className="mb-4 p-3 rounded-md bg-slate-50 text-sm text-slate-500">
+              Use your registered <span className="font-semibold text-slate-700">email</span> and <span className="font-semibold text-slate-700">password</span>. Roles (Teacher/Student) are determined automatically from your profile after sign in.
+            </div>
             <div className="mb-4">
               <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">Email</label>
               <input
@@ -77,6 +84,12 @@ export default function Login({ setUser }) {
               </div>
             </div>
 
+            {error && (
+              <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <input id="remember" type="checkbox" className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500" />
@@ -94,6 +107,13 @@ export default function Login({ setUser }) {
             </button>
 
             <p className="text-center text-sm text-slate-500 mt-4">
+              Don't have an account?{" "}
+              <a href="/signup" className="font-medium text-violet-600 hover:text-violet-700">
+                Sign up
+              </a>
+            </p>
+
+            <p className="text-center text-xs text-slate-500 mt-3">
               By continuing, you agree to our <span className="font-medium text-slate-600">Terms</span> and <span className="font-medium text-slate-600">Privacy Policy</span>.
             </p>
           </form>
