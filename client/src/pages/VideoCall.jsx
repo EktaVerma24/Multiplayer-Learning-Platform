@@ -63,9 +63,14 @@ export default function VideoCall({classroomId, user}) {
       console.log("📞 Incoming call/renegotiation from:", from);
       console.log("📊 isInCallRef.current:", isInCallRef.current);
       console.log("📊 pcRef.current exists:", !!pcRef.current);
+      console.log("📊 PC connection state:", pcRef.current?.connectionState);
       
       // Check if this is a renegotiation (already in call) or a new call
-      if (isInCallRef.current && pcRef.current) {
+      // Consider it renegotiation if: we're in call OR we have a connected peer connection
+      const isRenegotiation = (isInCallRef.current && pcRef.current) || 
+                              (pcRef.current && (pcRef.current.connectionState === 'connected' || pcRef.current.connectionState === 'connecting'));
+      
+      if (isRenegotiation) {
         // This is a renegotiation (e.g., screen sharing started)
         console.log("🔄 Handling renegotiation offer");
         try {
@@ -78,6 +83,13 @@ export default function VideoCall({classroomId, user}) {
           await pcRef.current.setLocalDescription(answer);
           socket.emit("webrtc:answer", { classroomId, answer, to: from });
           console.log("✅ Renegotiation answer sent");
+          
+          // Make sure we're marked as in call
+          if (!isInCallRef.current) {
+            setIsInCall(true);
+            isInCallRef.current = true;
+            console.log("✅ Updated call state during renegotiation");
+          }
           
           // Process any pending ICE candidates after setting remote description
           if (pendingCandidates.current.length > 0) {
@@ -169,27 +181,32 @@ export default function VideoCall({classroomId, user}) {
 
     pcRef.current.ontrack = (event) => {
       console.log("🎥 Remote track received - Track kind:", event.track.kind, "Track ID:", event.track.id);
+      console.log("📺 Track label:", event.track.label);
+      console.log("📺 Track enabled:", event.track.enabled);
+      console.log("📺 Track muted:", event.track.muted);
+      console.log("📺 Track readyState:", event.track.readyState);
       console.log("📺 Remote streams:", event.streams.length);
       
       if (event.streams && event.streams[0]) {
         const newStream = event.streams[0];
         console.log("✅ Received stream ID:", newStream.id);
+        console.log("📊 Stream has video tracks:", newStream.getVideoTracks().length);
+        console.log("📊 Stream has audio tracks:", newStream.getAudioTracks().length);
         
         if (remoteVideoRef.current) {
-          // Only update if it's a different stream to avoid interrupting playback
           const currentStream = remoteVideoRef.current.srcObject;
-          if (!currentStream || currentStream.id !== newStream.id) {
-            console.log("🔄 Updating remote video with new stream");
-            remoteVideoRef.current.srcObject = newStream;
-            console.log("✅ Remote video element updated successfully");
-            
-            // Force video to play
-            remoteVideoRef.current.play().catch(err => {
-              console.warn("⚠️ Auto-play prevented:", err);
-            });
-          } else {
-            console.log("⏭️ Same stream, skipping update to avoid interruption");
-          }
+          
+          // ALWAYS update the srcObject with the stream to ensure new tracks are reflected
+          console.log("🔄 Updating remote video srcObject");
+          remoteVideoRef.current.srcObject = newStream;
+          console.log("✅ Remote video element updated successfully");
+          
+          // Force video to play
+          setTimeout(() => {
+            remoteVideoRef.current.play()
+              .then(() => console.log("✅ Remote video playing"))
+              .catch(err => console.warn("⚠️ Auto-play prevented:", err));
+          }, 100);
         } else {
           console.error("❌ remoteVideoRef.current is null");
         }
@@ -198,33 +215,10 @@ export default function VideoCall({classroomId, user}) {
       }
     };
 
-    pcRef.current.onnegotiationneeded = async () => {
-      try {
-        console.log("🔔 Negotiation needed event fired");
-        console.log("📊 Connection state:", pcRef.current?.connectionState);
-        console.log("📊 Signaling state:", pcRef.current?.signalingState);
-        
-        // Only handle renegotiation if we already have a remote description
-        // This prevents firing during initial call setup
-        if (!pcRef.current.remoteDescription) {
-          console.log("⏭️ Skipping negotiation - no remote description yet (initial setup)");
-          return;
-        }
-        
-        // Avoid creating offer if already in the process
-        if (pcRef.current.signalingState !== "stable") {
-          console.log("⏭️ Skipping negotiation - signaling state not stable:", pcRef.current.signalingState);
-          return;
-        }
-        
-        console.log("🔄 Negotiation needed - creating new offer for track change");
-        const offer = await pcRef.current.createOffer();
-        await pcRef.current.setLocalDescription(offer);
-        socket.emit("webrtc:offer", { classroomId, offer, to: null });
-        console.log("✅ Renegotiation offer sent to room:", classroomId);
-      } catch (err) {
-        console.error("❌ Error during renegotiation:", err);
-      }
+    // Don't use onnegotiationneeded - it's unreliable for track replacement
+    // We'll handle renegotiation explicitly when needed
+    pcRef.current.onnegotiationneeded = () => {
+      console.log("🔔 Negotiation needed event fired (ignored - using explicit renegotiation)");
     };
 
     pcRef.current.onconnectionstatechange = () => {
@@ -276,30 +270,53 @@ export default function VideoCall({classroomId, user}) {
 
   const answerCall = async () => {
     try {
+      console.log("📞 Answering call...");
       setIncomingCall(false);
       setShowIncomingNotification(false);
       setIsInCall(true);
       isInCallRef.current = true;
       
       // Create peer connection if not exists
-      if (!pcRef.current) createPeerConnection();
+      if (!pcRef.current) {
+        console.log("🔧 Creating peer connection");
+        createPeerConnection();
+      }
       
       // Enable camera/mic FIRST so tracks are added to peer connection
-      await enableCameraAndMic();
+      // Only enable if we don't already have a stream
+      if (!stream) {
+        console.log("🎥 Enabling camera and mic for the first time");
+        await enableCameraAndMic();
+      } else {
+        console.log("✅ Already have stream, adding to peer connection if needed");
+        // Make sure existing tracks are added to peer connection
+        if (pcRef.current.getSenders().length === 0) {
+          stream.getTracks().forEach((track) => {
+            console.log("➕ Adding existing track to peer connection:", track.kind);
+            pcRef.current.addTrack(track, stream);
+          });
+        }
+      }
       
       // Set remote description from the offer
+      console.log("📝 Setting remote description from offer");
       await pcRef.current.setRemoteDescription(new RTCSessionDescription(pcRef.current.remoteOffer));
       
       // Add any pending ICE candidates
-      for (const c of pendingCandidates.current) {
-        await pcRef.current.addIceCandidate(new RTCIceCandidate(c));
+      if (pendingCandidates.current.length > 0) {
+        console.log(`📌 Adding ${pendingCandidates.current.length} pending ICE candidates`);
+        for (const c of pendingCandidates.current) {
+          await pcRef.current.addIceCandidate(new RTCIceCandidate(c));
+        }
+        pendingCandidates.current = [];
       }
-      pendingCandidates.current = [];
 
       // Now create and send the answer with tracks included
+      console.log("📤 Creating and sending answer");
       const answer = await pcRef.current.createAnswer();
       await pcRef.current.setLocalDescription(answer);
       socket.emit("webrtc:answer", { classroomId, answer, to: callerId });
+      console.log("✅ Answer sent successfully");
     } catch (error) {
       console.error("❌ Error answering call:", error);
       setIsInCall(false);
@@ -455,6 +472,20 @@ export default function VideoCall({classroomId, user}) {
           // Notify remote peer about screen sharing
           socket.emit("webrtc:screen-share-status", { classroomId, isSharing: true });
           console.log("📡 Screen share status sent to remote peer");
+          
+          // Wait a bit for track to be ready, then force renegotiation
+          console.log("🔄 Triggering explicit renegotiation for screen share...");
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          try {
+            console.log("📊 Signaling state before offer:", pcRef.current.signalingState);
+            const offer = await pcRef.current.createOffer();
+            await pcRef.current.setLocalDescription(offer);
+            socket.emit("webrtc:offer", { classroomId, offer, to: null });
+            console.log("✅ Screen share renegotiation offer sent");
+          } catch (err) {
+            console.error("❌ Failed to trigger renegotiation:", err);
+          }
           
           screenTrack.onended = async () => {
             console.log("📺 Screen sharing ended by user");
