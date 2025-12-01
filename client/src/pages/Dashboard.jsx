@@ -322,21 +322,31 @@ export default function Dashboard({ user }) {
         }
     };
     
-    const goToCreateChallenge = async (id) => {
-        try {
-            const res = await API.get(`/challenges/eligible`, { params: { userId: user._id, classroomId: id } });
-            if (res.data.eligible) {
-                navigate(`/create-challenge/${id}`);
-            } else {
-                toast.error("You are not eligible to create a challenge at this time.");
-            }
-        } catch (err) {
-            console.error("Failed to check challenge eligibility:", err);
-            toast.error("Could not check challenge eligibility. Please try again.");
-        }
-    };
-    
-    const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+    const goToCreateChallenge = async (id) => {
+        try {
+            const res = await API.get(`/challenges/eligible`, { params: { userId: user._id, classroomId: id } });
+            if (res.data.eligible) {
+                navigate(`/create-challenge/${id}`);
+            } else {
+                toast.error("You are not eligible to create a challenge at this time.");
+            }
+        } catch (err) {
+            console.error("Failed to check challenge eligibility:", err);
+            toast.error("Could not check challenge eligibility. Please try again.");
+        }
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("userInfo");
+        delete API.defaults.headers.common["Authorization"];
+        toast.success("Logged out successfully!", {
+            icon: '👋',
+        });
+        setTimeout(() => {
+            navigate("/");
+        }, 1000);
+    };    const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
     const cardVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
 
     if (loading) return <LoadingSpinner />; 
@@ -395,15 +405,30 @@ export default function Dashboard({ user }) {
                     <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
                         Welcome back, <span className="text-violet-500">{user.name}</span>!
                     </h1>
-                    <p className="text-slate-500 mt-2 text-lg">
-                        Ready to learn? Dive into a classroom or generate new study notes.
-                    </p>
-                    <button onClick={() => {navigate("/analytics")}}  className="cursor-pointer px-3 py-1 rounded-lg font-bold bg-violet-500 text-white absolute top-10 right-20">
-                        Analytics
-                    </button>
-                </header>
-                
-                <section className="mb-12">
+                    <p className="text-slate-500 mt-2 text-lg">
+                        Ready to learn? Dive into a classroom or generate new study notes.
+                    </p>
+                    <div className="absolute top-8 right-6 flex items-center gap-3">
+                        <button 
+                            onClick={() => navigate("/analytics")} 
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl hover:scale-105"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                            </svg>
+                            Analytics
+                        </button>
+                        <button 
+                            onClick={handleLogout}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl hover:scale-105"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
+                            </svg>
+                            Logout
+                        </button>
+                    </div>
+                </header>                <section className="mb-12">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold text-slate-800">Your Classrooms</h2>
                         {user.role === "teacher" && (
