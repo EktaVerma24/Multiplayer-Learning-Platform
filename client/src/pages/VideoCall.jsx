@@ -66,11 +66,28 @@ export default function VideoCall({classroomId, user}) {
         // This is a renegotiation (e.g., screen sharing started)
         console.log("🔄 Handling renegotiation offer");
         try {
+          // Set remote description with the new offer
           await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+          console.log("✅ Remote description set for renegotiation");
+          
+          // Create and send answer
           const answer = await pcRef.current.createAnswer();
           await pcRef.current.setLocalDescription(answer);
           socket.emit("webrtc:answer", { classroomId, answer, to: from });
           console.log("✅ Renegotiation answer sent");
+          
+          // Process any pending ICE candidates after setting remote description
+          if (pendingCandidates.current.length > 0) {
+            console.log(`📌 Adding ${pendingCandidates.current.length} pending ICE candidates`);
+            for (const c of pendingCandidates.current) {
+              try {
+                await pcRef.current.addIceCandidate(new RTCIceCandidate(c));
+              } catch (err) {
+                console.error("❌ Error adding pending candidate:", err);
+              }
+            }
+            pendingCandidates.current = [];
+          }
         } catch (err) {
           console.error("❌ Error handling renegotiation:", err);
         }
@@ -148,13 +165,20 @@ export default function VideoCall({classroomId, user}) {
     };
 
     pcRef.current.ontrack = (event) => {
-      console.log("🎥 Remote stream added - Track kind:", event.track.kind);
+      console.log("🎥 Remote track received - Track kind:", event.track.kind, "Track ID:", event.track.id);
       console.log("📺 Remote streams:", event.streams.length);
+      
       if (event.streams && event.streams[0]) {
-        console.log("✅ Setting remote video srcObject");
+        console.log("✅ Setting remote video srcObject with stream ID:", event.streams[0].id);
         if (remoteVideoRef.current) {
+          // Always update the remote video with the new stream
           remoteVideoRef.current.srcObject = event.streams[0];
-          console.log("✅ Remote video element updated");
+          console.log("✅ Remote video element updated successfully");
+          
+          // Force video to play in case it was paused
+          remoteVideoRef.current.play().catch(err => {
+            console.warn("⚠️ Auto-play prevented:", err);
+          });
         } else {
           console.error("❌ remoteVideoRef.current is null");
         }
@@ -165,18 +189,28 @@ export default function VideoCall({classroomId, user}) {
 
     pcRef.current.onnegotiationneeded = async () => {
       try {
+        console.log("🔔 Negotiation needed event fired");
+        console.log("📊 Connection state:", pcRef.current?.connectionState);
+        console.log("📊 Signaling state:", pcRef.current?.signalingState);
+        
         // Only handle renegotiation if we already have a remote description
         // This prevents firing during initial call setup
         if (!pcRef.current.remoteDescription) {
-          console.log("⏭️ Skipping negotiation - no remote description yet");
+          console.log("⏭️ Skipping negotiation - no remote description yet (initial setup)");
           return;
         }
         
-        console.log("🔄 Negotiation needed - creating new offer");
+        // Avoid creating offer if already in the process
+        if (pcRef.current.signalingState !== "stable") {
+          console.log("⏭️ Skipping negotiation - signaling state not stable:", pcRef.current.signalingState);
+          return;
+        }
+        
+        console.log("🔄 Negotiation needed - creating new offer for track change");
         const offer = await pcRef.current.createOffer();
         await pcRef.current.setLocalDescription(offer);
         socket.emit("webrtc:offer", { classroomId, offer, to: null });
-        console.log("✅ Renegotiation offer sent");
+        console.log("✅ Renegotiation offer sent to room:", classroomId);
       } catch (err) {
         console.error("❌ Error during renegotiation:", err);
       }
@@ -375,17 +409,32 @@ export default function VideoCall({classroomId, user}) {
     if (!screenSharing) {
       try {
         console.log("📺 Starting screen share...");
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+          video: { 
+            cursor: "always",
+            displaySurface: "monitor"
+          } 
+        });
         const screenTrack = screenStream.getVideoTracks()[0];
-        console.log("✅ Screen track obtained:", screenTrack.label);
+        console.log("✅ Screen track obtained:", screenTrack.label, "ID:", screenTrack.id);
         
         const sender = pcRef.current?.getSenders().find((s) => s.track?.kind === "video");
         console.log("🔍 Video sender found:", !!sender);
+        console.log("📊 Current senders:", pcRef.current?.getSenders().map(s => s.track?.kind));
 
         if (sender) {
           console.log("🔄 Replacing camera track with screen track...");
+          const oldTrack = sender.track;
+          console.log("📹 Old track:", oldTrack?.label, oldTrack?.id);
+          
           await sender.replaceTrack(screenTrack);
-          console.log("✅ Track replaced successfully");
+          console.log("✅ Track replaced successfully - new track:", screenTrack.id);
+          
+          // Update local video to show screen
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = screenStream;
+          }
+          
           setScreenSharing(true);
           
           // Notify remote peer about screen sharing
@@ -402,6 +451,11 @@ export default function VideoCall({classroomId, user}) {
                 try {
                   await currentSender.replaceTrack(videoTrack);
                   console.log("✅ Reverted to camera successfully");
+                  
+                  // Update local video back to camera
+                  if (localVideoRef.current) {
+                    localVideoRef.current.srcObject = stream;
+                  }
                 } catch (err) {
                   console.error("❌ Failed to revert to camera:", err);
                 }
@@ -411,7 +465,8 @@ export default function VideoCall({classroomId, user}) {
             socket.emit("webrtc:screen-share-status", { classroomId, isSharing: false });
           };
         } else {
-          console.warn("No video sender found to replace track.");
+          console.error("❌ No video sender found to replace track.");
+          alert("Cannot share screen: No active video connection");
         }
       } catch (err) {
         console.error("Screen share failed:", err);
@@ -429,6 +484,11 @@ export default function VideoCall({classroomId, user}) {
           if (videoTrack) {
             await sender.replaceTrack(videoTrack);
             console.log("✅ Stopped screen sharing, reverted to camera");
+            
+            // Update local video back to camera
+            if (localVideoRef.current) {
+              localVideoRef.current.srcObject = stream;
+            }
           }
         }
         setScreenSharing(false);
