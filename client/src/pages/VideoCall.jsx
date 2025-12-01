@@ -529,10 +529,7 @@ export default function VideoCall({classroomId, user}) {
     if (!screenSharing) {
       try {
         console.log("📺 Starting screen share...");
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
-          video: { cursor: "always" },
-          audio: false
-        });
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         const screenTrack = screenStream.getVideoTracks()[0];
         console.log("✅ Screen track obtained:", screenTrack.label, "ID:", screenTrack.id);
         
@@ -563,22 +560,6 @@ export default function VideoCall({classroomId, user}) {
           // Notify remote peer about screen sharing
           socket.emit("webrtc:screen-share-status", { classroomId, isSharing: true, to: callPartnerRef.current });
           console.log("📡 Screen share status sent to remote peer");
-          
-          // Wait a bit for track to be ready, then force renegotiation
-          console.log("🔄 Triggering explicit renegotiation for screen share...");
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          try {
-            console.log("📊 Signaling state before offer:", pcRef.current.signalingState);
-            const offer = await pcRef.current.createOffer();
-            await pcRef.current.setLocalDescription(offer);
-            socket.emit("webrtc:offer", { classroomId, offer, to: callPartnerRef.current });
-            console.log("✅ Screen share renegotiation offer sent");
-          } catch (err) {
-            console.error("❌ Failed to trigger renegotiation:", err);
-            // Don't stop screen sharing on renegotiation error
-            console.log("⚠️ Renegotiation failed but keeping screen share active");
-          }
           
           screenTrack.onended = async () => {
             console.log("📺 Screen sharing ended by user");
