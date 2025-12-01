@@ -10,6 +10,7 @@ export default function VideoCall({classroomId, user}) {
   const remoteVideoRef = useRef(null);
   const pcRef = useRef(null);
   const pendingCandidates = useRef([]);
+  const isInCallRef = useRef(false);
 
   const [isCaller, setIsCaller] = useState(false);
   const [incomingCall, setIncomingCall] = useState(false);
@@ -60,9 +61,11 @@ export default function VideoCall({classroomId, user}) {
 
     socket.on("webrtc:incoming-call", async ({ from, offer }) => {
       console.log("📞 Incoming call/renegotiation from:", from);
+      console.log("📊 isInCallRef.current:", isInCallRef.current);
+      console.log("📊 pcRef.current exists:", !!pcRef.current);
       
       // Check if this is a renegotiation (already in call) or a new call
-      if (isInCall && pcRef.current) {
+      if (isInCallRef.current && pcRef.current) {
         // This is a renegotiation (e.g., screen sharing started)
         console.log("🔄 Handling renegotiation offer");
         try {
@@ -169,16 +172,24 @@ export default function VideoCall({classroomId, user}) {
       console.log("📺 Remote streams:", event.streams.length);
       
       if (event.streams && event.streams[0]) {
-        console.log("✅ Setting remote video srcObject with stream ID:", event.streams[0].id);
+        const newStream = event.streams[0];
+        console.log("✅ Received stream ID:", newStream.id);
+        
         if (remoteVideoRef.current) {
-          // Always update the remote video with the new stream
-          remoteVideoRef.current.srcObject = event.streams[0];
-          console.log("✅ Remote video element updated successfully");
-          
-          // Force video to play in case it was paused
-          remoteVideoRef.current.play().catch(err => {
-            console.warn("⚠️ Auto-play prevented:", err);
-          });
+          // Only update if it's a different stream to avoid interrupting playback
+          const currentStream = remoteVideoRef.current.srcObject;
+          if (!currentStream || currentStream.id !== newStream.id) {
+            console.log("🔄 Updating remote video with new stream");
+            remoteVideoRef.current.srcObject = newStream;
+            console.log("✅ Remote video element updated successfully");
+            
+            // Force video to play
+            remoteVideoRef.current.play().catch(err => {
+              console.warn("⚠️ Auto-play prevented:", err);
+            });
+          } else {
+            console.log("⏭️ Same stream, skipping update to avoid interruption");
+          }
         } else {
           console.error("❌ remoteVideoRef.current is null");
         }
@@ -240,6 +251,7 @@ export default function VideoCall({classroomId, user}) {
     try {
       setIsCaller(true);
       setIsInCall(true);
+      isInCallRef.current = true;
       
       createPeerConnection();
       
@@ -256,6 +268,7 @@ export default function VideoCall({classroomId, user}) {
 
     } catch (error) {
       setIsInCall(false);
+      isInCallRef.current = false;
       setIsCaller(false);
       alert("Failed to start call: " + error.message);
     }
@@ -266,6 +279,7 @@ export default function VideoCall({classroomId, user}) {
       setIncomingCall(false);
       setShowIncomingNotification(false);
       setIsInCall(true);
+      isInCallRef.current = true;
       
       // Create peer connection if not exists
       if (!pcRef.current) createPeerConnection();
@@ -289,6 +303,7 @@ export default function VideoCall({classroomId, user}) {
     } catch (error) {
       console.error("❌ Error answering call:", error);
       setIsInCall(false);
+      isInCallRef.current = false;
       setIncomingCall(true);
       setShowIncomingNotification(true);
       alert("Failed to answer call: " + error.message);
@@ -522,6 +537,7 @@ export default function VideoCall({classroomId, user}) {
     setScreenSharing(false);
     setRemoteScreenSharing(false);
     setIsInCall(false);
+    isInCallRef.current = false;
     setCaptionText("");
     setIsCaptioning(false);
 
