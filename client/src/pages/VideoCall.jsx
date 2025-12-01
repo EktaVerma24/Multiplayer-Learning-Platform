@@ -12,6 +12,7 @@ export default function VideoCall({classroomId, user}) {
   const pendingCandidates = useRef([]);
   const isInCallRef = useRef(false);
   const screenStreamRef = useRef(null);
+  const callPartnerRef = useRef(null);
 
   const [isCaller, setIsCaller] = useState(false);
   const [incomingCall, setIncomingCall] = useState(false);
@@ -27,6 +28,9 @@ export default function VideoCall({classroomId, user}) {
   const [isCaptioning, setIsCaptioning] = useState(false);
   const speechRecognitionRef = useRef(null);
   const [classroomName, setClassroomName] = useState("");
+  const [availablePeers, setAvailablePeers] = useState([]);
+  const availablePeersRef = useRef([]);
+  const [callPartnerId, setCallPartnerId] = useState(null);
   
   // Draggable local video position
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
@@ -34,6 +38,17 @@ export default function VideoCall({classroomId, user}) {
 
   // Check if current user is teacher
   const isTeacher = user?.role === 'teacher';
+
+  const updateCallPartner = (peerId) => {
+    callPartnerRef.current = peerId || null;
+    setCallPartnerId(peerId || null);
+  };
+
+  const updateAvailablePeers = (peers) => {
+    const resolvedPeers = typeof peers === 'function' ? peers(availablePeersRef.current.slice()) : peers;
+    availablePeersRef.current = resolvedPeers;
+    setAvailablePeers(resolvedPeers);
+  };
 
   // Fetch classroom name
   useEffect(() => {
@@ -49,7 +64,7 @@ export default function VideoCall({classroomId, user}) {
     if (classroomId) {
       fetchClassroom();
     }
-  }, [classroomId]);
+  }, [classroomId, isTeacher]);
 
   useEffect(() => {
     if (!socket) {
@@ -60,8 +75,52 @@ export default function VideoCall({classroomId, user}) {
     console.log("✅ VideoCall: Socket connected, joining classroom:", classroomId);
     socket.emit("joinClassroom", { classroomId, user });
 
+    const syncPeers = (peers = []) => {
+      updateAvailablePeers(peers);
+      if (!peers.includes(callPartnerRef.current)) {
+        if (isTeacher && peers.length > 0) {
+          console.log("🎯 Selecting default peer:", peers[0]);
+          updateCallPartner(peers[0]);
+        } else if (!isTeacher) {
+          updateCallPartner(null);
+        }
+      }
+    };
+
+    socket.on("webrtc:peers", ({ peers }) => {
+      console.log("📋 Available peers:", peers);
+      syncPeers(peers || []);
+    });
+
+    socket.on("webrtc:peer-joined", ({ peerId }) => {
+      console.log("➕ Peer joined:", peerId);
+      updateAvailablePeers((prev) => {
+        if (prev.includes(peerId)) return prev;
+        const updated = [...prev, peerId];
+        if (isTeacher && !callPartnerRef.current) {
+          updateCallPartner(peerId);
+        }
+        return updated;
+      });
+    });
+
+    socket.on("webrtc:peer-left", ({ peerId }) => {
+      console.log("➖ Peer left:", peerId);
+      const filtered = availablePeersRef.current.filter((id) => id !== peerId);
+      updateAvailablePeers(filtered);
+      if (callPartnerRef.current === peerId) {
+        console.log("⚠️ Current call partner left");
+        hangUpCall(false);
+        updateCallPartner(null);
+      }
+    });
+
     socket.on("webrtc:incoming-call", async ({ from, offer }) => {
       console.log("📞 Incoming call/renegotiation from:", from);
+      if (from && callPartnerRef.current !== from) {
+        console.log("🎯 Setting call partner from incoming offer");
+        updateCallPartner(from);
+      }
       console.log("📊 isInCallRef.current:", isInCallRef.current);
       console.log("📊 pcRef.current exists:", !!pcRef.current);
       console.log("📊 PC connection state:", pcRef.current?.connectionState);
@@ -82,7 +141,7 @@ export default function VideoCall({classroomId, user}) {
           // Create and send answer
           const answer = await pcRef.current.createAnswer();
           await pcRef.current.setLocalDescription(answer);
-          socket.emit("webrtc:answer", { classroomId, answer, to: from });
+          socket.emit("webrtc:answer", { classroomId, answer, to: callPartnerRef.current || from });
           console.log("✅ Renegotiation answer sent");
           
           // Make sure we're marked as in call
@@ -110,6 +169,9 @@ export default function VideoCall({classroomId, user}) {
       } else {
         // This is a new incoming call
         console.log("📞 New incoming call");
+        if (!callPartnerRef.current) {
+          updateCallPartner(from);
+        }
         setIncomingCall(true);
         setCallerId(from);
         setShowIncomingNotification(true);
@@ -121,6 +183,9 @@ export default function VideoCall({classroomId, user}) {
 
     socket.on("webrtc:answer", async ({ from, answer }) => {
       console.log("✅ Answer received from:", from);
+      if (from && !callPartnerRef.current) {
+        updateCallPartner(from);
+      }
       if (pcRef.current) {
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
         pendingCandidates.current.forEach(async (c) => {
@@ -159,6 +224,9 @@ export default function VideoCall({classroomId, user}) {
     });
 
     return () => {
+      socket.off("webrtc:peers");
+      socket.off("webrtc:peer-joined");
+      socket.off("webrtc:peer-left");
       socket.off("webrtc:incoming-call");
       socket.off("webrtc:answer");
       socket.off("webrtc:ice-candidate");
@@ -176,7 +244,7 @@ export default function VideoCall({classroomId, user}) {
 
     pcRef.current.onicecandidate = (event) => {
       if (event.candidate) {
-        socket.emit("webrtc:ice-candidate", { classroomId, candidate: event.candidate });
+        socket.emit("webrtc:ice-candidate", { classroomId, candidate: event.candidate, to: callPartnerRef.current });
       }
     };
 
@@ -256,6 +324,11 @@ export default function VideoCall({classroomId, user}) {
       alert("Socket not connected. Please refresh the page.");
       return;
     }
+
+    if (!callPartnerRef.current) {
+      alert("No participant available to call yet. Wait for a student to join.");
+      return;
+    }
     
     try {
       setIsCaller(true);
@@ -273,7 +346,7 @@ export default function VideoCall({classroomId, user}) {
       const offer = await pcRef.current.createOffer();
       await pcRef.current.setLocalDescription(offer);
       
-      socket.emit("webrtc:offer", { classroomId, offer, to: null });
+      socket.emit("webrtc:offer", { classroomId, offer, to: callPartnerRef.current });
 
     } catch (error) {
       setIsInCall(false);
@@ -330,7 +403,7 @@ export default function VideoCall({classroomId, user}) {
       console.log("📤 Creating and sending answer");
       const answer = await pcRef.current.createAnswer();
       await pcRef.current.setLocalDescription(answer);
-      socket.emit("webrtc:answer", { classroomId, answer, to: callerId });
+      socket.emit("webrtc:answer", { classroomId, answer, to: callPartnerRef.current || callerId });
       console.log("✅ Answer sent successfully");
     } catch (error) {
       console.error("❌ Error answering call:", error);
@@ -490,7 +563,7 @@ export default function VideoCall({classroomId, user}) {
           console.log("✅ Screen sharing state set to true");
           
           // Notify remote peer about screen sharing
-          socket.emit("webrtc:screen-share-status", { classroomId, isSharing: true });
+          socket.emit("webrtc:screen-share-status", { classroomId, isSharing: true, to: callPartnerRef.current });
           console.log("📡 Screen share status sent to remote peer");
           
           // Wait a bit for track to be ready, then force renegotiation
@@ -501,7 +574,7 @@ export default function VideoCall({classroomId, user}) {
             console.log("📊 Signaling state before offer:", pcRef.current.signalingState);
             const offer = await pcRef.current.createOffer();
             await pcRef.current.setLocalDescription(offer);
-            socket.emit("webrtc:offer", { classroomId, offer, to: null });
+            socket.emit("webrtc:offer", { classroomId, offer, to: callPartnerRef.current });
             console.log("✅ Screen share renegotiation offer sent");
           } catch (err) {
             console.error("❌ Failed to trigger renegotiation:", err);
@@ -531,7 +604,7 @@ export default function VideoCall({classroomId, user}) {
             }
             setScreenSharing(false);
             screenStreamRef.current = null;
-            socket.emit("webrtc:screen-share-status", { classroomId, isSharing: false });
+            socket.emit("webrtc:screen-share-status", { classroomId, isSharing: false, to: callPartnerRef.current });
           };
         } else {
           console.error("❌ No video sender found to replace track.");
@@ -562,7 +635,7 @@ export default function VideoCall({classroomId, user}) {
         }
         setScreenSharing(false);
         screenStreamRef.current = null;
-        socket.emit("webrtc:screen-share-status", { classroomId, isSharing: false });
+        socket.emit("webrtc:screen-share-status", { classroomId, isSharing: false, to: callPartnerRef.current });
       } catch (err) {
         console.error("❌ Error stopping screen share:", err);
       }
@@ -595,13 +668,18 @@ export default function VideoCall({classroomId, user}) {
     isInCallRef.current = false;
     setCaptionText("");
     setIsCaptioning(false);
+    if (isTeacher && availablePeersRef.current.length > 0) {
+      updateCallPartner(availablePeersRef.current[0]);
+    } else {
+      updateCallPartner(null);
+    }
 
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
 
     if (isLocalInitiated) {
-      socket.emit("webrtc:hangup", { classroomId });
-      socket.emit("webrtc:screen-share-status", { classroomId, isSharing: false });
+      socket.emit("webrtc:hangup", { classroomId, to: callPartnerRef.current });
+      socket.emit("webrtc:screen-share-status", { classroomId, isSharing: false, to: callPartnerRef.current });
     }
   };
 
@@ -624,7 +702,7 @@ export default function VideoCall({classroomId, user}) {
           const transcript = Array.from(event.results)
             .map(result => result[0].transcript)
             .join('');
-          socket.emit("webrtc:caption", { classroomId, text: transcript });
+          socket.emit("webrtc:caption", { classroomId, text: transcript, to: callPartnerRef.current });
         };
 
         recognition.onerror = (event) => {

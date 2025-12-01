@@ -153,40 +153,48 @@ export const setupSocket = (server) => {
 
    // ------------------- WEBRTC SIGNALING -------------------
 
-    // ✅ Offer: send directly to the target peer
-    socket.on("webrtc:offer", ({ classroomId, offer }) => {
-  if (!classroomId || !offer) return;
-  socket.to(classroomId).emit("webrtc:incoming-call", { from: socket.id, offer });
-});
+    const emitToTarget = (targetId, event, payload, classroomId) => {
+      if (targetId && io.sockets.sockets.get(targetId)) {
+        io.to(targetId).emit(event, payload);
+      } else if (classroomId) {
+        socket.to(classroomId).emit(event, payload);
+      }
+    };
 
-    // ✅ Answer: send back to offer sender
-    socket.on("webrtc:answer", ({ classroomId, answer }) => {
+    // ✅ Offer: send directly to the target peer when provided
+    socket.on("webrtc:offer", ({ classroomId, offer, to }) => {
+      if (!classroomId || !offer) return;
+      emitToTarget(to, "webrtc:incoming-call", { from: socket.id, offer }, classroomId);
+    });
+
+    // ✅ Answer: send back to offer sender (targeted)
+    socket.on("webrtc:answer", ({ classroomId, answer, to }) => {
       if (!classroomId || !answer) return;
-      socket.to(classroomId).emit("webrtc:answer", { from: socket.id, answer });
+      emitToTarget(to, "webrtc:answer", { from: socket.id, answer }, classroomId);
     });
 
     // ✅ ICE Candidate: forward only to the correct peer
-    socket.on("webrtc:ice-candidate", ({ classroomId, candidate }) => {
-  if (!classroomId || !candidate) return;
-  socket.to(classroomId).emit("webrtc:ice-candidate", { from: socket.id, candidate });
-});
+    socket.on("webrtc:ice-candidate", ({ classroomId, candidate, to }) => {
+      if (!classroomId || !candidate) return;
+      emitToTarget(to, "webrtc:ice-candidate", { from: socket.id, candidate }, classroomId);
+    });
 
     // ✅ Hangup: notify other peer that call ended
-    socket.on("webrtc:hangup", ({ classroomId }) => {
+    socket.on("webrtc:hangup", ({ classroomId, to }) => {
       if (!classroomId) return;
-      socket.to(classroomId).emit("webrtc:hangup", { from: socket.id });
+      emitToTarget(to, "webrtc:hangup", { from: socket.id }, classroomId);
       console.log(`📞 User ${socket.id} hung up in room ${classroomId}`);
     });
 
     // ✅ Caption: broadcast live captions to other peers
-    socket.on("webrtc:caption", ({ classroomId, text }) => {
+    socket.on("webrtc:caption", ({ classroomId, text, to }) => {
       if (!classroomId || !text) return;
-      socket.to(classroomId).emit("webrtc:caption", { from: socket.id, text });
+      emitToTarget(to, "webrtc:caption", { from: socket.id, text }, classroomId);
     });
 
-    socket.on("webrtc:screen-share-status", ({ classroomId, isSharing }) => {
+    socket.on("webrtc:screen-share-status", ({ classroomId, isSharing, to }) => {
       if (!classroomId) return;
-      socket.to(classroomId).emit("webrtc:screen-share-status", { from: socket.id, isSharing });
+      emitToTarget(to, "webrtc:screen-share-status", { from: socket.id, isSharing }, classroomId);
       console.log(`📺 User ${socket.id} ${isSharing ? 'started' : 'stopped'} screen sharing in room ${classroomId}`);
     });
 
