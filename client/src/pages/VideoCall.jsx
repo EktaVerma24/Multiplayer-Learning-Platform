@@ -12,6 +12,7 @@ export default function VideoCall({classroomId, user}) {
   const pendingCandidates = useRef([]);
   const isInCallRef = useRef(false);
   const screenStreamRef = useRef(null);
+  const remoteStreamRef = useRef(null);
   const callPartnerRef = useRef(null);
 
   const [isCaller, setIsCaller] = useState(false);
@@ -258,6 +259,7 @@ export default function VideoCall({classroomId, user}) {
       
       if (event.streams && event.streams[0]) {
         const newStream = event.streams[0];
+        remoteStreamRef.current = newStream;
         console.log("✅ Received stream ID:", newStream.id);
         console.log("📊 Stream has video tracks:", newStream.getVideoTracks().length);
         console.log("📊 Stream has audio tracks:", newStream.getAudioTracks().length);
@@ -274,8 +276,6 @@ export default function VideoCall({classroomId, user}) {
         }
         
         if (remoteVideoRef.current) {
-          const currentStream = remoteVideoRef.current.srcObject;
-          
           // ALWAYS update the srcObject with the stream to ensure new tracks are reflected
           console.log("🔄 Updating remote video srcObject");
           remoteVideoRef.current.srcObject = newStream;
@@ -311,6 +311,26 @@ export default function VideoCall({classroomId, user}) {
       }
     };
   };
+
+  // Reattach remote stream whenever the DOM swaps video elements
+  useEffect(() => {
+    if (remoteScreenSharing && remoteVideoRef.current && remoteStreamRef.current) {
+      remoteVideoRef.current.srcObject = remoteStreamRef.current;
+      remoteVideoRef.current.muted = false;
+      remoteVideoRef.current.play().catch(() => undefined);
+    }
+    if (!remoteScreenSharing && remoteVideoRef.current && remoteStreamRef.current) {
+      remoteVideoRef.current.srcObject = remoteStreamRef.current;
+    }
+  }, [remoteScreenSharing]);
+
+  // Ensure local preview stays attached when layout swaps (e.g., entering PiP during screen share)
+  useEffect(() => {
+    const activeStream = screenSharing && screenStreamRef.current ? screenStreamRef.current : stream;
+    if (localVideoRef.current && activeStream) {
+      localVideoRef.current.srcObject = activeStream;
+    }
+  }, [remoteScreenSharing, screenSharing, stream]);
 
   const startCall = async () => {
     // Only allow teachers to start calls
