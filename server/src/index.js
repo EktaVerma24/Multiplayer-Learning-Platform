@@ -30,6 +30,15 @@ app.use(
   })
 );
 
+// Root endpoint for cron jobs
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'EduBridge Server is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Health check endpoint (before other routes)
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Server is running' });
