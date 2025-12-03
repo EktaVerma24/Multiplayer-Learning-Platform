@@ -412,11 +412,9 @@ export default function ClassroomPage({ user }) {
                   </label>
                 )}
 
-                {(paused && !adminChatAccess) && (
-                  <p className="text-red-500 font-semibold">Chat Paused by Admin</p>
-                )}
-
-                {(!paused || adminChatAccess) && (
+                {(paused && !adminChatAccess) && (
+                  <p className="text-red-500 font-semibold">Chat Paused by Admin</p>
+                )}
 
                 {replyingTo && (
                   <div className="w-full px-4 py-2 bg-violet-50 border border-violet-200 rounded-lg flex items-center justify-between mb-2">
@@ -435,16 +433,16 @@ export default function ClassroomPage({ user }) {
                     </button>
                   </div>
                 )}
-                  <input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    className="block w-full px-4 py-3 border border-slate-300 rounded-full shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition"
-                    placeholder={paused && !adminChatAccess ? "Chat is paused" : "Type a message..."}
-                    disabled={paused && adminChatAccess ? false : paused}
-                  />
-                )}
 
-                {(!paused || adminChatAccess) && (
+                {(!paused || adminChatAccess) && (
+                  <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    className="block w-full px-4 py-3 border border-slate-300 rounded-full shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition"
+                    placeholder={paused && !adminChatAccess ? "Chat is paused" : "Type a message..."}
+                    disabled={paused && adminChatAccess ? false : paused}
+                  />
+                )}                {(!paused || adminChatAccess) && (
                   <button
                     type="submit"
                     className="flex-shrink-0 bg-violet-600 text-white p-3 rounded-full hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transition-all duration-300 shadow-md hover:shadow-lg"
