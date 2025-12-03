@@ -262,19 +262,22 @@ export default function ClassroomPage({ user }) {
 // ------------------------------------------------------------------
   const sendMessage = (e) => { // Changed back to synchronous, as only socket.emit is used
     e.preventDefault();
-    if (!input.trim() || !socket || !user?._id || paused) return;
+    if (!input.trim() || !socket || !user?._id) return;
+    
+    // Teachers can send messages even when chat is paused
+    const isTeacher = classroom?.teacher?._id === user?._id;
+    if (paused && !isTeacher) return;
 
-    const messageContent = input.trim();
-    
+    const messageContent = input.trim();
+    
     // 1. Emit socket event for real-time delivery and server-side saving.
     // The server will save it to the DB and then broadcast it back via 'receiveMessage'.
-    socket.emit("sendMessage", { 
+    socket.emit("sendMessage", { 
         classroomId, 
-        message: messageContent, 
-        user // Pass the full user object for the server to reference _id and display name
-    });
-    
-    // 2. Clear the input field immediately
+        message: messageContent,
+        user, // Pass the full user object for the server to reference _id and display name
+        chatPaused: paused // Pass the paused state to server
+    });    // 2. Clear the input field immediately
     setInput("");
 
     // NOTE: The message is added to state ONLY when 'receiveMessage' is triggered 

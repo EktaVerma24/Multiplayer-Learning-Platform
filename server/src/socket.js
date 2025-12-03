@@ -70,9 +70,28 @@ export const setupSocket = (server) => {
     });
 
     // ------------------- CHAT -------------------
-     socket.on("sendMessage", async ({ classroomId, message, user }) => {
+     socket.on("sendMessage", async ({ classroomId, message, user, chatPaused }) => {
 
    try {
+    // Check if chat is paused and user is not the teacher
+    const Classroom = (await import('./models/Classroom.js')).default;
+    const classroom = await Classroom.findById(classroomId);
+    
+    if (!classroom) {
+      socket.emit("error", { message: "Classroom not found" });
+      return;
+    }
+    
+    const isTeacher = classroom.teacher.equals(user._id);
+    
+    // Only block non-teachers when chat is paused
+    if (chatPaused && !isTeacher) {
+      socket.emit("chatError", { 
+        message: "Chat is currently paused by the teacher" 
+      });
+      return;
+    }
+    
     // 1. Save the message to the database
     const newMessage = await Message.create({
      classroomId: classroomId,
