@@ -1,11 +1,34 @@
 import { Server } from "socket.io";
 import Message from "./models/Message.js";
+import Event from "./models/Events.js";
 // Store the latest canvas state for each room
 const canvasStates = {};
 
 // Track peers per classroom for WebRTC
 const roomPeers = new Map();
 const userIdToSocketId = new Map();
+const classroomMembers = new Map();
+
+const trackChatEvent = async ({ userId, classroomId, messageLength, replyMeta }) => {
+  try {
+    await Event.create({
+      user: userId,
+      eventType: "chat_send",
+      context: {
+        classroomId,
+        extra: {
+          messageLength,
+          interactionWith: replyMeta?.interactionWith || null,
+          isReply: Boolean(replyMeta),
+          repliedToMessage: replyMeta?.repliedToMessage || null,
+        },
+      },
+      ts: new Date(),
+    });
+  } catch (err) {
+    console.error("Failed to track chat event:", err);
+  }
+};
 
 export const setupSocket = (server) => {
   const io = new Server(server, {
@@ -29,29 +52,56 @@ export const setupSocket = (server) => {
 
     const broadcastAllRoomCounts = () => {
       const allCounts = Array.from(roomPeers.entries()).map(([classroomId, students]) => ({
-          classroomId: classroomId,
-          count: students.size,
+        classroomId,
+        count: students.size,
       }));
-      io.emit('update-all-counts', allCounts);
-  };
+      io.emit("update-all-counts", allCounts);
+    };
+
+    const emitUsersInChat = (classroomId) => {
+      const memberMap = classroomMembers.get(classroomId);
+      const users = memberMap
+        ? Array.from(memberMap.values()).map((info) => ({
+            _id: info._id,
+            name: info.name || "Participant",
+          }))
+        : [];
+      io.to(classroomId).emit("usersInChat", { users });
+    };
     // ------------------- CLASSROOM JOIN -------------------
     socket.on("joinClassroom", ({ classroomId, user }) => {
       if (!classroomId) return;
 
       socket.join(classroomId);
       socket.data.classroomId = classroomId;
-      socket.data.user = user || { id: socket.id, name: "Guest" };
+      const normalizedUser = user
+        ? {
+            ...user,
+            _id: user._id || socket.id,
+            name: user.name || user.username || "Participant",
+          }
+        : { _id: socket.id, name: "Guest" };
+      socket.data.user = normalizedUser;
 
       // Save peer in roomPeers for WebRTC
       if (!roomPeers.has(classroomId)) roomPeers.set(classroomId, new Set());
       roomPeers.get(classroomId).add(socket.id);
+
+      if (!classroomMembers.has(classroomId)) classroomMembers.set(classroomId, new Map());
+      classroomMembers.get(classroomId).set(socket.id, {
+        _id: normalizedUser._id,
+        name: normalizedUser.name || "Participant",
+      });
+      emitUsersInChat(classroomId);
 
       // Send the latest whiteboard state to the new user
       if (canvasStates[classroomId]) {
         socket.emit("canvas-state-from-server", canvasStates[classroomId]);
       }
 
-      userIdToSocketId.set(user?._id, socket.id);
+      if (normalizedUser._id) {
+        userIdToSocketId.set(normalizedUser._id, socket.id);
+      }
 
       // Send list of existing peers for WebRTC
       const peers = Array.from(roomPeers.get(classroomId)).filter(
@@ -106,28 +156,23 @@ export const setupSocket = (server) => {
     io.to(classroomId).emit("receiveMessage", newMessage);
     
         socket.emit("messageSent", { success: true, messageId: newMessage._id });
-        
-        // If replying to someone, track interaction event
-        if (replyTo && replyTo.senderId && replyTo.senderId !== user._id) {
-          try {
-            const Event = (await import('./models/Events.js')).default;
-            await Event.create({
-              user: user._id,
-              eventType: 'chat_send',
-              context: {
-                classroomId,
-                extra: {
-                  messageLength: message.length,
-                  interactionWith: replyTo.senderId,
-                  isReply: true,
-                  repliedToMessage: replyTo.messageId
-                }
-              },
-              ts: new Date()
-            });
-          } catch (eventErr) {
-            console.error("Failed to track reply event:", eventErr);
-          }
+
+        const replyMeta =
+          replyTo && replyTo.senderId && replyTo.senderId !== user._id
+            ? {
+                interactionWith: replyTo.senderId,
+                repliedToMessage: replyTo.messageId,
+              }
+            : null;
+
+        const actorId = user?._id || socket.data.user?._id;
+        if (actorId) {
+          trackChatEvent({
+            userId: actorId,
+            classroomId,
+            messageLength: message.length,
+            replyMeta,
+          });
         }
         
       } catch (error) {
@@ -162,18 +207,22 @@ export const setupSocket = (server) => {
         
         roomPeers.get(classroomId)?.delete(targetSocketID);
       
-      if(roomPeers.get(classroomId)?.size === 0) roomPeers.delete(classroomId);
+      if (roomPeers.get(classroomId)?.size === 0) {
+        roomPeers.delete(classroomId);
+      }
+
+      const memberMap = classroomMembers.get(classroomId);
+      if (memberMap) {
+        memberMap.delete(targetSocketID);
+        if (memberMap.size === 0) {
+          classroomMembers.delete(classroomId);
+        }
+      }
+
+      userIdToSocketId.delete(userId);
 
       broadcastAllRoomCounts();
-
-      const updatedUsers = Array.from(roomPeers.get(classroomId) || []).map((id) => {
-        return {
-          userId: id,
-          name: "Participant",
-        };
-      });
-
-      io.to(classroomId).emit("usersInChat", { users: updatedUsers });
+      emitUsersInChat(classroomId);
       io.to(targetSocketID).emit("kicked", { message: "You have been kicked out by the admin.", userId: userId });
       io.to(classroomId).emit("userKicked", { userId });
       
@@ -256,6 +305,20 @@ export const setupSocket = (server) => {
           console.log(`✨ Cleaned up canvas state for classroom ${classroomId}`);
         }
       }
+
+      const memberMap = classroomMembers.get(classroomId);
+      if (memberMap) {
+        memberMap.delete(socket.id);
+        if (memberMap.size === 0) {
+          classroomMembers.delete(classroomId);
+        }
+      }
+
+      if (socket.data.user?._id) {
+        userIdToSocketId.delete(socket.data.user._id);
+      }
+
+      emitUsersInChat(classroomId);
 
       socket.to(classroomId).emit("webrtc:peer-left", { peerId: socket.id });
       socket.to(classroomId).emit("userLeft", { userId: socket.id });
