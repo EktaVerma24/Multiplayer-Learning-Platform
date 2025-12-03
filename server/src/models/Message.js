@@ -16,6 +16,12 @@ const messageSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    replyTo: {
+        messageId: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
+        senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        senderName: { type: String },
+        content: { type: String }
+    },
     timestamp: {
         type: Date,
         default: Date.now

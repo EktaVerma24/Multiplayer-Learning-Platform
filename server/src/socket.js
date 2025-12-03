@@ -70,7 +70,7 @@ export const setupSocket = (server) => {
     });
 
     // ------------------- CHAT -------------------
-     socket.on("sendMessage", async ({ classroomId, message, user, chatPaused }) => {
+     socket.on("sendMessage", async ({ classroomId, message, user, chatPaused, replyTo }) => {
 
    try {
     // Check if chat is paused and user is not the teacher
@@ -96,7 +96,8 @@ export const setupSocket = (server) => {
     const newMessage = await Message.create({
      classroomId: classroomId,
           message: message,
-          user: user._id, 
+          user: user._id,
+          ...(replyTo && { replyTo })
     });
     await newMessage.save();
 
@@ -105,6 +106,29 @@ export const setupSocket = (server) => {
     io.to(classroomId).emit("receiveMessage", newMessage);
     
         socket.emit("messageSent", { success: true, messageId: newMessage._id });
+        
+        // If replying to someone, track interaction event
+        if (replyTo && replyTo.senderId && replyTo.senderId !== user._id) {
+          try {
+            const Event = (await import('./models/Events.js')).default;
+            await Event.create({
+              user: user._id,
+              eventType: 'chat_send',
+              context: {
+                classroomId,
+                extra: {
+                  messageLength: message.length,
+                  interactionWith: replyTo.senderId,
+                  isReply: true,
+                  repliedToMessage: replyTo.messageId
+                }
+              },
+              ts: new Date()
+            });
+          } catch (eventErr) {
+            console.error("Failed to track reply event:", eventErr);
+          }
+        }
         
       } catch (error) {
         console.error("Error saving or broadcasting message:", error);

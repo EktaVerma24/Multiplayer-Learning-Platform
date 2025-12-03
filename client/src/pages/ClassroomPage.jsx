@@ -121,14 +121,13 @@ export default function ClassroomPage({ user }) {
   const { id } = useParams();
   const classroomId = id;
   const { socket } = useSocket();
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [classroom, setClassroom] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const searchParams = new URLSearchParams(location.search);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [classroom, setClassroom] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();  const searchParams = new URLSearchParams(location.search);
   const initialTab = searchParams.get("tab") || "chat";
   const [tab, setTab] = useState(initialTab);
   const [adminChatAccess, setAdminChatAccess] = useState(false);
@@ -276,9 +275,16 @@ export default function ClassroomPage({ user }) {
         classroomId, 
         message: messageContent,
         user, // Pass the full user object for the server to reference _id and display name
-        chatPaused: paused // Pass the paused state to server
+        chatPaused: paused, // Pass the paused state to server
+        replyTo: replyingTo ? {
+          messageId: replyingTo._id,
+          senderId: replyingTo.user?._id,
+          senderName: replyingTo.user?.name,
+          content: replyingTo.message.substring(0, 100) // First 100 chars
+        } : null
     });    // 2. Clear the input field immediately
     setInput("");
+    setReplyingTo(null);
 
     // NOTE: The message is added to state ONLY when 'receiveMessage' is triggered 
     // by the server (in the useEffect hook), ensuring messages are synchronized 
@@ -411,6 +417,24 @@ export default function ClassroomPage({ user }) {
                 )}
 
                 {(!paused || adminChatAccess) && (
+
+                {replyingTo && (
+                  <div className="w-full px-4 py-2 bg-violet-50 border border-violet-200 rounded-lg flex items-center justify-between mb-2">
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-violet-700">Replying to {replyingTo.user?.name}</p>
+                      <p className="text-xs text-gray-600 truncate">{replyingTo.message}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReplyingTo(null)}
+                      className="text-violet-600 hover:text-violet-800 transition"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
                   <input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -442,3 +466,4 @@ export default function ClassroomPage({ user }) {
     </div>
   );
 }
+

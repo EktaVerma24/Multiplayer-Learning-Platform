@@ -258,6 +258,66 @@ export const getInteractionSummary = async (req, res) => {
   }
 };
 
+// Get student interaction network for a classroom
+export const getStudentInteractions = async (req, res) => {
+  try {
+    const { classroomId } = req.params;
+    
+    const interactions = await Event.find({
+      eventType: 'chat_send',
+      'context.classroomId': classroomId,
+      'context.extra.interactionWith': { $exists: true, $ne: null },
+      'context.extra.isReply': true
+    })
+    .populate('user', 'name email role')
+    .sort({ ts: -1 });
+
+    // Build interaction graph
+    const graph = {};
+    const userMap = {};
+    
+    interactions.forEach(event => {
+      const userId = event.user._id.toString();
+      const partnerId = event.context.extra.interactionWith;
+      
+      userMap[userId] = event.user.name;
+      
+      if (!graph[userId]) graph[userId] = {};
+      if (!graph[userId][partnerId]) graph[userId][partnerId] = 0;
+      
+      graph[userId][partnerId]++;
+    });
+
+    // Convert to network format
+    const nodes = Object.keys(userMap).map(id => ({
+      id,
+      name: userMap[id]
+    }));
+    
+    const edges = [];
+    for (const [source, targets] of Object.entries(graph)) {
+      for (const [target, weight] of Object.entries(targets)) {
+        edges.push({ 
+          source, 
+          target, 
+          weight,
+          label: `${weight} ${weight === 1 ? 'reply' : 'replies'}`
+        });
+      }
+    }
+
+    res.json({ 
+      nodes, 
+      edges, 
+      totalInteractions: interactions.length,
+      interactions: interactions.slice(0, 50) // Last 50 interactions
+    });
+  } catch (error) {
+    console.error("Error fetching student interactions:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Seed dummy analytics data for testing
 export const seedDummyData = async (req, res) => {
   try {
