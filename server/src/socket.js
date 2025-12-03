@@ -9,19 +9,56 @@ const roomPeers = new Map();
 const userIdToSocketId = new Map();
 const classroomMembers = new Map();
 
+const normalizeId = (value) => {
+  if (value == null) return null;
+  if (typeof value === "string") return value;
+  if (typeof value.toString === "function") return value.toString();
+  try {
+    return JSON.stringify(value);
+  } catch (err) {
+    return String(value);
+  }
+};
+
+const buildReplyMeta = (rawMeta) => {
+  if (!rawMeta || typeof rawMeta !== "object") return null;
+
+  return {
+    interactionWith: normalizeId(
+      rawMeta.interactionWith ?? rawMeta.senderId ?? rawMeta.userId ?? rawMeta.user?._id
+    ),
+    repliedToMessage: normalizeId(
+      rawMeta.repliedToMessage ?? rawMeta.messageId ?? rawMeta._id
+    ),
+    originalMessage: rawMeta.message ?? rawMeta.content ?? null,
+  };
+};
+
 const trackChatEvent = async ({ userId, classroomId, messageLength, replyMeta }) => {
+  const normalizedReply = buildReplyMeta(replyMeta);
+  const normalizedLength = Number.isFinite(messageLength)
+    ? messageLength
+    : typeof messageLength === "string"
+    ? messageLength.length
+    : typeof messageLength === "number"
+    ? messageLength
+    : 0;
+
+  const extraPayload = {
+    messageLength: normalizedLength,
+    isReply: Boolean(normalizedReply),
+    interactionWith: normalizedReply?.interactionWith ?? null,
+    repliedToMessage: normalizedReply?.repliedToMessage ?? null,
+    originalMessage: normalizedReply?.originalMessage ?? null,
+  };
+
   try {
     await Event.create({
       user: userId,
       eventType: "chat_send",
       context: {
         classroomId,
-        extra: {
-          messageLength,
-          interactionWith: replyMeta?.interactionWith || null,
-          isReply: Boolean(replyMeta),
-          repliedToMessage: replyMeta?.repliedToMessage || null,
-        },
+        extra: extraPayload,
       },
       ts: new Date(),
     });
